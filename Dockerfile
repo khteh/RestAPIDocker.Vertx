@@ -1,10 +1,9 @@
 # Extend vert.x image
 FROM vertx/vertx3
 
-ARG APPVERSION
-RUN echo $APPVERSION
+ARG version
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
-ENV VERTICLE_FILE target/restapi-$APPVERSION-fat.jar
+ENV VERTICLE_FILE target/restapi-$version-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /opt/verticles
