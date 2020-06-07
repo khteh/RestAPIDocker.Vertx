@@ -60,6 +60,7 @@ jobs:
           command: |
             VERSION=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec)
             echo 'export APPVERSION=$VERSION' >> $BASH_ENV
+            . $BASH_ENV
       - run:
           name: Build & Push docker image
           command: |
@@ -68,7 +69,7 @@ jobs:
               then
                 VERSION=dev-$VERSION
             fi
-            docker build --build-arg version=1.0 -t khteh/restapi.vertx:latest -t khteh/restapi.vertx:$VERSION .
+            docker build --build-arg version=$APPVERSION -t khteh/restapi.vertx:latest -t khteh/restapi.vertx:$VERSION .
             docker push khteh/restapi.vertx:latest
             docker push khteh/restapi.vertx:$VERSION
             echo ${VERSION} > docker-build_number.txt

@@ -21,6 +21,7 @@ There are 2 ways to run locally:
 
 ### Using Vertx command line interface:
 * Install the Vertx command line interface from https://bintray.com/vertx/downloads/distribution/2.1.5
+
 `vertx run com.restapi.vertx.Launcher -cp target/*`
 
 ## Run docker image:
