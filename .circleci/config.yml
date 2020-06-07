@@ -1,0 +1,81 @@
+# Java Maven CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+#
+version: 2.1
+jobs:
+  build:
+    working_directory: ~/workspace
+    docker:
+      # note: we are using jdk build 8u171 as there is a bug in 8u181 causing builds to fail
+      # see: https://discuss.circleci.com/t/circleci-build-failure-on-openjdk-image/26104/11
+      # we should revert to `openjdk:8-jdk-node` once the issue has been fixed
+      #- image: circleci/openjdk:8u171-jdk-node
+      #- image: circleci/openjdk:11.0.1-jdk-node
+      - image: circleci/openjdk:15-jdk-buster-node
+        environment:
+          MAX_HEAP_SIZE: 4096m
+          HEAP_NEWSIZE: 1024m
+    environment:
+      MAVEN_OPTS: -Xmx3200m -Xms512m
+    steps:
+      - checkout
+      - run: 
+          name: Install Python Pip
+          command: |
+            sudo apt update -y
+            sudo apt install -y awscli
+      #- run: 
+      #    name: Install AWS CLI
+      #    command: sudo pip install awscli
+      # Download and cache dependencies
+      - restore_cache:
+          name: Restore Maven Dependency Cache
+          keys:
+          - v2-dependencies-{{ checksum "pom.xml" }}
+          # fallback to using the latest cache if no exact match is found
+          - v2-dependencies-
+      - setup_remote_docker:
+          docker_layer_caching: false
+      # Maven clean and install projects
+      - run: 
+          name: Login to Docker Hub
+          command: docker login -u $DOCKER_USER -p $DOCKER_PASS
+      - run:
+          name: Install Protocol Buffer compiler
+          command: |
+            wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.12.3/protoc-3.12.3-linux-x86_64.zip
+            unzip protoc-3.12.3-linux-x86_64.zip
+            sudo cp bin/protoc /usr/local/bin
+            hash -r
+      - run: 
+          name: Build Application
+          command: mvn clean install dependency:resolve-plugins dependency:go-offline -Pprod -DskipTests
+      - run: 
+          name: "Setup custom environment variables"
+          command: |
+            VERSION=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec)
+            echo 'export VERSION=$VERSION' >> $BASH_ENV          
+      - run:
+          name: Build & Push docker image
+          command: |
+            VERSION=v$VERSION.$CIRCLE_BUILD_NUM
+            if [ "${CIRCLE_BRANCH}" != "master" ]
+              then
+                VERSION=dev-$VERSION
+            fi
+            docker build -t khteh/restapi.vertx:latest -t khteh/restapi.vertx:$VERSION .
+            docker push khteh/restapi.vertx:latest
+            docker push khteh/restapi.vertx:$VERSION
+            echo ${VERSION} > docker-build_number.txt
+      - save_cache:
+          name: Save Maven Dependency Cache
+          paths:
+            - ~/.m2
+          key: v2-dependencies-{{ checksum "pom.xml" }}
+      - persist_to_workspace:
+          name: Save Workspace
+          root: .
+          paths:
+            - target/restapi-$VERSION-fat.jar
+            - docker-build_number.txt

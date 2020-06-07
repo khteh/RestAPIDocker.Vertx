@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.example</groupId>
+	<artifactId>restapi</artifactId>
+	<version>1.0</version>
+	<name>RestAPIDocker.Vertx</name>
+	<description>REST API Docker with Vert.x</description>
+
+	<properties>
+		<java.version>14</java.version>
+		<vertx.version>4.0.0-milestone5</vertx.version>
+ 		<maven.compiler.source>14</maven.compiler.source>
+    	<maven.compiler.target>14</maven.compiler.target>		
+	</properties>
+
+	<dependencies>
+		<dependency>
+		    <groupId>commons-logging</groupId>
+		    <artifactId>commons-logging</artifactId>
+		    <version>1.2</version>
+		</dependency>		
+		<dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+		<dependency>
+		 <groupId>io.vertx</groupId>
+		 <artifactId>vertx-web-client</artifactId>
+		 <version>${vertx.version}</version>
+		</dependency>        
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-unit</artifactId>
+            <version>${vertx.version}</version>
+            <scope>test</scope>
+        </dependency>
+		<dependency>
+		 <groupId>io.vertx</groupId>
+		 <artifactId>vertx-config</artifactId>
+		 <version>${vertx.version}</version>
+		</dependency>
+ 		<dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.11.0</version>
+      	</dependency>
+		<dependency>
+		    <groupId>org.skyscreamer</groupId>
+		    <artifactId>jsonassert</artifactId>
+		    <version>1.5.0</version>
+		    <scope>test</scope>
+		</dependency>
+		<dependency>
+		    <groupId>io.vertx</groupId>
+		    <artifactId>vertx-junit5</artifactId>
+		    <version>4.0.0-milestone5</version>
+		    <scope>test</scope>
+		</dependency>		      			
+		<dependency>
+	        <groupId>org.junit.jupiter</groupId>
+	        <artifactId>junit-jupiter</artifactId>
+	        <version>5.7.0-M1</version>
+	        <scope>test</scope>
+	    </dependency>	    
+  	</dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Main-Class>io.vertx.core.Launcher</Main-Class>
+                                        <Main-Verticle>com.restapi.vertx.Launcher</Main-Verticle>
+                                    </manifestEntries>
+                                </transformer>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+              						<resource>META-INF/services/io.vertx.core.spi.VerticleFactory</resource>
+          						</transformer>                                
+                            </transformers>
+                            <artifactSet/>
+                                    <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-fat.jar</outputFile>
+                        </configuration>
+                    </execution>
+                </executions>			
+			</plugin>
+			<plugin>
+	            <groupId>org.apache.maven.plugins</groupId>
+	            <artifactId>maven-surefire-plugin</artifactId>
+	            <version>3.0.0-M4</version>
+	        </plugin>
+	        <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.0.0-M4</version>
+            </plugin>
+		</plugins>
+	</build>
+</project>
