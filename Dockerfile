@@ -1,7 +1,7 @@
 # Extend vert.x image
 FROM vertx/vertx3
 # VERSION information is exported from .circleci/config.yml
-RUN export VERSION=`cat ~/workspace/application_version.txt`
+RUN export VERSION=`cat /tmp/application_version.txt`
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
 ENV VERTICLE_FILE target/restapi-$VERSION-fat.jar
 

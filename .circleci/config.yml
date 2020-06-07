@@ -60,7 +60,7 @@ jobs:
           command: |
             VERSION=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec)
             echo 'export VERSION=$VERSION' >> $BASH_ENV
-            echo ${VERSION} > application_version.txt
+            echo ${VERSION} > /tmp/application_version.txt
       - run:
           name: Build & Push docker image
           command: |
