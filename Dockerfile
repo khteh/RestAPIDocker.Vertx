@@ -1,6 +1,6 @@
 # Extend vert.x image
 FROM vertx/vertx3
-RUN export VERSION=`mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec`
+# VERSION information is exported from .circleci/config.yml
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
 ENV VERTICLE_FILE target/restapi-$VERSION-fat.jar
 
