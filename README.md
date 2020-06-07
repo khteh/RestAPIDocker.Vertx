@@ -63,7 +63,7 @@ There are 2 ways to run locally:
 * DELETE: localhost:8080/api/v1/books/book/012345
 
 # Future Work
-* Add ORM (HUbernate JPA) in worker verticle. JPA is blocking.
+* Add ORM (Hybernate JPA) in worker verticle. JPA is blocking.
 * https://stackoverflow.com/questions/54384677/how-to-use-hibernate-as-non-blocking-orm-with-vert-x
 * https://groups.google.com/forum/#!topic/vertx/SBfVL21fhZM
 
