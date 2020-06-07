@@ -1,9 +1,9 @@
 # Extend vert.x image
 FROM vertx/vertx3
-# VERSION information is exported from .circleci/config.yml
-RUN export VERSION=`cat /tmp/application_version.txt`
+
+ARG APPVERSION
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
-ENV VERTICLE_FILE target/restapi-$VERSION-fat.jar
+ENV VERTICLE_FILE target/restapi-$APPVERSION-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /opt/verticles
