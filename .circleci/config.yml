@@ -4,7 +4,7 @@
 #
 version: 2.1
 jobs:
-  build:
+  build_and_test:
     working_directory: ~/workspace
     docker:
       # note: we are using jdk build 8u171 as there is a bug in 8u181 causing builds to fail
@@ -47,11 +47,14 @@ jobs:
             wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.12.3/protoc-3.12.3-linux-x86_64.zip
             unzip protoc-3.12.3-linux-x86_64.zip
             sudo cp bin/protoc /usr/local/bin
-            chmod +x /usr/local/bin/protoc
+            sudo chmod +x /usr/local/bin/protoc
             hash -r
       - run: 
           name: Build Application
           command: mvn clean install dependency:resolve-plugins dependency:go-offline -Pprod -DskipTests
+      - run: 
+          name: Test Application
+          command: mvn test          
       - run: 
           name: "Setup custom environment variables"
           command: |
@@ -80,3 +83,7 @@ jobs:
           paths:
             - target/restapi-$VERSION-fat.jar
             - docker-build_number.txt
+workflows:
+  main:
+    jobs:
+      - build_and_test
