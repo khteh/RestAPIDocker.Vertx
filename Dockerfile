@@ -2,6 +2,7 @@
 FROM vertx/vertx3
 
 ARG APPVERSION
+RUN echo $APPVERSION
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
 ENV VERTICLE_FILE target/restapi-$APPVERSION-fat.jar
 
