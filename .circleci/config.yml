@@ -58,8 +58,8 @@ jobs:
       - run: 
           name: Save version information in BASH env
           command: |
-            APPVERSION=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec)
-            echo 'export APPVERSION=$APPVERSION' >> $BASH_ENV
+            VERSION=$(mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec)
+            echo 'export APPVERSION=$VERSION' >> $BASH_ENV
       - run:
           name: Build & Push docker image
           command: |
