@@ -1,6 +1,5 @@
-# Extend vert.x image
 FROM vertx/vertx3
-
+MAINTAINER Kok How, Teh <funcoolgeek@gmail.com>
 ARG version
 ENV VERSION $version
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
