@@ -3,17 +3,28 @@
   - Book
 
 # Build
+
 ## Database
 * Import "Book" database from src/main/resources/db folder
 
-## To build Tomcat-deployable WAR application and docker image:
-```mvn clean install```
+## To build Vertx-deployable JAR application and docker image:
+```mvn clean package```
 
 ## Continuous Integration
 * Integrated with CircleCI
 
 # Start the application:
-```docker run -d -t -p 8081:8080 khteh/restapi.vertx:latest```
+## Run Locally
+There are 2 ways to run locally:
+### Using java:
+`java -jar target/restapi-1.0-fat.jar`
+
+### Using Vertx command line interface:
+* Install the Vertx command line interface from https://bintray.com/vertx/downloads/distribution/2.1.5
+`vertx run com.restapi.vertx.Launcher -cp target/*`
+
+## Run docker image:
+`docker run -d -t -p 8081:8080 khteh/restapi.vertx:latest`
 
 * visit http://localhost:port/restapi/greeting
 * visit http://localhost:port/restapi/greeting?name=Mickey%20Mouse
