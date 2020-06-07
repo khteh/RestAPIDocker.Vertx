@@ -13,7 +13,7 @@
 * Integrated with CircleCI
 
 # Start the application:
-```docker run -d -t -p 8081:8080 khteh/tomcat:restapi-1.0```
+```docker run -d -t -p 8081:8080 khteh/restapi.vertx:latest```
 
 * visit http://localhost:port/restapi/greeting
 * visit http://localhost:port/restapi/greeting?name=Mickey%20Mouse

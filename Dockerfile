@@ -1,8 +1,8 @@
 # Extend vert.x image
 FROM vertx/vertx3
-
+ENV VERSION mvn -q -Dexec.executable="echo" -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.0.0:exec
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
-ENV VERTICLE_FILE target/RestAPIDocker.Vertx-1.0-fat.jar
+ENV VERTICLE_FILE target/restapi-$VERSION-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /opt/verticles
