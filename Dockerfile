@@ -2,8 +2,9 @@
 FROM vertx/vertx3
 
 ARG version
+ENV VERSION ${version}
 ENV VERTICLE_NAME com.restapi.vertx.Launcher
-ENV VERTICLE_FILE target/restapi-$version-fat.jar
+ENV VERTICLE_FILE target/restapi-$VERSION-fat.jar
 
 # Set the location of the verticles
 ENV VERTICLE_HOME /opt/verticles

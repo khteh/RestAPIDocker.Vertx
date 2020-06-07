@@ -68,7 +68,6 @@ jobs:
               then
                 VERSION=dev-$VERSION
             fi
-            echo $APPVERSION
             docker build --build-arg version=$APPVERSION -t khteh/restapi.vertx:latest -t khteh/restapi.vertx:$VERSION .
             docker push khteh/restapi.vertx:latest
             docker push khteh/restapi.vertx:$VERSION
