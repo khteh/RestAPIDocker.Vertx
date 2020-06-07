@@ -1,21 +1,10 @@
 # RestAPI with Java Vertx3 and Docker
-* 4 controllers:
-  - Greeting
+* 1 verticle:
   - Book
-  - Author
-  - Course (GRPC)
 
-# The following protocols are used:
-* HTTP/2
-* GRPC
-  
 # Build
 ## Database
 * Import "Book" database from src/main/resources/db folder
-
-## Protocol Buffer
-* Download procotol buffer compiler from https://github.com/protocolbuffers/protobuf/releases
-* Extract the downloaded .zip and copy protoc binary to system folders, /usr/local/bin, for instance
 
 ## To build Tomcat-deployable WAR application and docker image:
 ```mvn clean install```
