@@ -52,13 +52,7 @@ public class BookVerticle extends AbstractVerticle {
 		      Throwable failure = rc.failure();
 		      if (failure != null)
 		        failure.printStackTrace();
-		    });		
-		ConfigStoreOptions fileStore = new ConfigStoreOptions()
-				.setType("file")
-				.setFormat("json")
-				.setConfig(new JsonObject().put("path", "src/main/config/vertx.json"));
-		ConfigRetrieverOptions options = new ConfigRetrieverOptions().addStore(fileStore);		
-		ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
+		    });
 		router_.get("/api/v1/books/book/:isbn").handler(this::getBook).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
 		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
@@ -70,19 +64,15 @@ public class BookVerticle extends AbstractVerticle {
 		router_.post("/api/v1/books").handler(this::addBook);		
 		router_.put("/api/v1/books/book/:isbn").handler(this::updateBook);
 		router_.delete("/api/v1/books/book/:isbn").handler(this::deleteBook);
-		retriever.getConfig(json -> {
-			JsonObject config = json.result();  
-			vertx.createHttpServer()
-				.requestHandler(router_)
-				.listen(config.getInteger("port"), result -> {
-					if (result.succeeded()) {
-						log.info(BookVerticle.class.getName() + " launched successfully!");
-						startPromise.complete();
-					} else {
-						log.error("Failed to launch " + BookVerticle.class.getName());
-						startPromise.fail(result.cause());
-					}
-				});
+		log.info(BookVerticle.class.getName() + " port: " + config().getInteger("port"));
+		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), result -> {
+			if (result.succeeded()) {
+				log.info(BookVerticle.class.getName() + " launched successfully!");
+				startPromise.complete();
+			} else {
+				log.error("Failed to launch " + BookVerticle.class.getName());
+				startPromise.fail(result.cause());
+			}
 		});		
 	}
 	private void getBook(RoutingContext context) {
