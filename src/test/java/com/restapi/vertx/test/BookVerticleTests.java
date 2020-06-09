@@ -21,7 +21,7 @@ import org.json.JSONException;
 import org.skyscreamer.jsonassert.*;
 //import org.junit.runner.RunWith;
 @ExtendWith(VertxExtension.class)
-public class SimpleRESTVerticleTests {
+public class BookVerticleTests {
 	@BeforeAll
 	public void setup(Vertx vertx, VertxTestContext context) throws IOException {
 		vertx.deployVerticle(BookVerticle.class.getName(), context.completing());			
@@ -49,7 +49,7 @@ public class SimpleRESTVerticleTests {
 		  .get(config.getInteger("port"), "localhost", "/api/v1/books/book/123")
 		  .send(ar -> {
 			  if (!ar.succeeded())
-				  System.out.println(SimpleRESTVerticleTests.class.getName() + " get error: " + ar.cause().getMessage());
+				  System.out.println(BookVerticleTests.class.getName() + " get error: " + ar.cause().getMessage());
 			  assertTrue(ar.succeeded());
 		      // Obtain response
 		      HttpResponse<Buffer> response = ar.result();
@@ -59,7 +59,7 @@ public class SimpleRESTVerticleTests {
 		      try {
 		    	  JSONAssert.assertEquals(expect, response.body().toString(), false);
 		      } catch (JSONException e) {
-		    	  System.out.println(SimpleRESTVerticleTests.class.getName() + " exception!" + e.toString());
+		    	  System.out.println(BookVerticleTests.class.getName() + " exception!" + e.toString());
 		      }
 		  });
 		});		
