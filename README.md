@@ -27,8 +27,9 @@ There are 2 ways to run locally:
 * `docker run -d -t -p 8081:8080 khteh/restapi.vertx:latest`
 
 # Sample Requests:
+* GET: localhost:8080/api/v1/authors
 * GET: localhost:8080/api/v1/books
-* GET: localhost:8080/api/v1/books/book/012345
+* GET: localhost:8080/api/v1/books/012345
 * POST: localhost:8080/api/v1/books
 ```
 {
@@ -45,23 +46,18 @@ There are 2 ways to run locally:
   "pageCount": 1234
 }
 ```
-* PUT: localhost:8080/api/v1/books/book/012345
+* PUT: http://localhost:8080/api/v1/books/456789
+* Change author:
 ```
-{
-  "id": 4,
-  "title": "Read Me Not!",
-  "isbn": "012345",
-  "author": {
-    "id": 4,
-    "email": null,
-    "phone": null,
-    "lastName": "Last Name",
-    "firstName": "First Name"
-  },
-  "pageCount": 1234
-}
+  {
+    "isbn": "456789",
+    "author": {
+      "id": 1
+    }
+  }
 ```
-* DELETE: localhost:8080/api/v1/books/book/012345
+* DELETE: localhost:8080/api/v1/books/012345
+* DELETE: localhost:8080/api/v1/authors/1
 
 # Future Work
 * Add ORM (Hybernate JPA) in worker verticle. JPA is blocking.
