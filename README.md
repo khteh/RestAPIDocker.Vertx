@@ -27,6 +27,7 @@ There are 2 ways to run locally:
 * `docker run -d -t -p 8081:8080 khteh/restapi.vertx:latest`
 
 # Sample Requests:
+* GET: localhost:8080/api/v1/books
 * GET: localhost:8080/api/v1/books/book/012345
 * POST: localhost:8080/api/v1/books
 ```
