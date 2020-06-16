@@ -46,8 +46,7 @@ There are 2 ways to run locally:
   "pageCount": 1234
 }
 ```
-* PUT: http://localhost:8080/api/v1/books/456789
-* Change author:
+* PUT: http://localhost:8080/api/v1/books/456789 (This changes the author):
 ```
   {
     "isbn": "456789",
