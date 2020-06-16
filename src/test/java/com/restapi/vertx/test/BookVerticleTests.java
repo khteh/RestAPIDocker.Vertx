@@ -23,7 +23,7 @@ import org.skyscreamer.jsonassert.*;
 @ExtendWith(VertxExtension.class)
 public class BookVerticleTests {
 	@BeforeAll
-	public void setup(Vertx vertx, VertxTestContext context) throws IOException {
+	public static void setup(Vertx vertx, VertxTestContext context) throws IOException {
 		vertx.deployVerticle(BookVerticle.class.getName(), context.completing());			
 	}
 	@Test

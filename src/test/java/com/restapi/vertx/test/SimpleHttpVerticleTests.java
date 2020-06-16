@@ -23,7 +23,7 @@ import com.restapi.vertx.verticles.SimpleHttpVerticle;
 public class SimpleHttpVerticleTests {
 	@BeforeAll
 	@DisplayName("Deploy a verticle")
-	void prepare(Vertx vertx, VertxTestContext testContext) {
+	static void prepare(Vertx vertx, VertxTestContext testContext) {
 	    vertx.deployVerticle(new SimpleHttpVerticle(), testContext.completing());
 	    System.out.println(SimpleHttpVerticleTests.class.getName() + " setup completes");
 	}	

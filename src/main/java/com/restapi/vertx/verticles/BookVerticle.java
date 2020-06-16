@@ -24,9 +24,9 @@ public class BookVerticle extends AbstractVerticle {
 	private Map<Author, Book> authorBooks_ = new LinkedHashMap<>();
 	Router router_;
 	private void populateBooks() {
-		authors_.put(1L, new Author(1L, "JK", "Rowing"));
-		authors_.put(2L, new Author(2L, "Mickey", "Mouse"));
-		authors_.put(3L, new Author(3L, "Donald", "Duck"));
+		authors_.put(1L, new Author(1L, "JK", "Rowing", "jkrowing@email.com", "+49-123456789"));
+		authors_.put(2L, new Author(2L, "Mickey", "Mouse", "mickey@email.com", "+1-123456789"));
+		authors_.put(3L, new Author(3L, "Donald", "Duck", "donald@email.com", "+1-987654321"));
 		firstNameAuthors_.put("JK", authors_.get(1L));
 		firstNameAuthors_.put("Mickey", authors_.get(2L));
 		firstNameAuthors_.put("Donald", authors_.get(3L));
@@ -53,7 +53,19 @@ public class BookVerticle extends AbstractVerticle {
 		      if (failure != null)
 		        failure.printStackTrace();
 		    });
-		router_.get("/api/v1/books/book/:isbn").handler(this::getBook).failureHandler(ctx -> {
+		router_.get("/api/v1/authors").handler(this::getAllAuthors).failureHandler(ctx -> {
+			  int statusCode = ctx.statusCode();
+		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  // Status code will be 500 for the RuntimeException or 403 for the other failure
+			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+		    });
+		router_.get("/api/v1/books").handler(this::getAllBooks).failureHandler(ctx -> {
+			  int statusCode = ctx.statusCode();
+		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  // Status code will be 500 for the RuntimeException or 403 for the other failure
+			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+		    });
+		router_.get("/api/v1/books/:isbn").handler(this::getBook).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
 		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
@@ -61,9 +73,13 @@ public class BookVerticle extends AbstractVerticle {
 		    });
 		// Add handler to read the request’s body
 		router_.route("/api/v1/books*").handler(BodyHandler.create());
+		router_.route("/api/v1/authors*").handler(BodyHandler.create());
+		router_.post("/api/v1/authors").handler(this::addAuthor);		
+		router_.put("/api/v1/authors/:id").handler(this::updateAuthor);
+		router_.delete("/api/v1/authors/:id").handler(this::deleteAuthor);
 		router_.post("/api/v1/books").handler(this::addBook);		
-		router_.put("/api/v1/books/book/:isbn").handler(this::updateBook);
-		router_.delete("/api/v1/books/book/:isbn").handler(this::deleteBook);
+		router_.put("/api/v1/books/:isbn").handler(this::updateBook);
+		router_.delete("/api/v1/books/:isbn").handler(this::deleteBook);
 		log.info(BookVerticle.class.getName() + " port: " + config().getInteger("port"));
 		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), result -> {
 			if (result.succeeded()) {
@@ -75,6 +91,14 @@ public class BookVerticle extends AbstractVerticle {
 			}
 		});		
 	}
+	private void getAllAuthors(RoutingContext context) {
+	    context.response().putHeader("content-type", "application/json; charset=utf-8")
+	    	.end(Json.encodePrettily(authors_.values()));
+	}
+	private void getAllBooks(RoutingContext context) {
+	    context.response().putHeader("content-type", "application/json; charset=utf-8")
+	    	.end(Json.encodePrettily(isbnBooks_.values()));
+	}	
 	private void getBook(RoutingContext context) {
 		final String isbn = context.request().getParam("isbn");        
 	    Book book = isbnBooks_.get(isbn);
@@ -85,6 +109,20 @@ public class BookVerticle extends AbstractVerticle {
 		        .end(Json.encodePrettily(book));
 	    else
 	    	context.response().end();
+	}
+	private void addAuthor(RoutingContext context) {
+		final Author author = Json.decodeValue(context.getBodyAsString(), Author.class);
+	    context.response().putHeader("content-type", "application/json; charset=utf-8");
+		if(author != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
+				author.getLastName() != null && !author.getLastName().trim().isEmpty() &&
+				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
+			if (authors_.get(author.getId()) == null) {
+				author.setId(authors_.size() + 1L);
+				authors_.put(author.getId(), author);
+				firstNameAuthors_.put(author.getFirstName(), author);
+				lastNameAuthors_.put(author.getLastName(), author);
+			}			
+		}		
 	}
 	private void addBook(RoutingContext context) {
 		final Book book = Json.decodeValue(context.getBodyAsString(), Book.class);
@@ -107,52 +145,77 @@ public class BookVerticle extends AbstractVerticle {
 		} else
 			context.response().setStatusCode(400).end();
 	}
-	private void deleteBook(RoutingContext context) {
-		final String isbn = context.request().getParam("isbn");        
-	    Book book = isbnBooks_.get(isbn);
-	    context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    	.setStatusCode(book == null ? 400 : 200);
-	    if (book != null) {
-	    	isbnBooks_.remove(isbn);
-	    	titleBooks_.remove(book.getTitle());
-	    	authorBooks_.remove(book.getAuthor());
-		    context.response()
-		        .end(Json.encodePrettily(book));
-	    } else
-	    	context.response().end();
+	private void deleteAuthor(RoutingContext context) {
+		final String stringId = context.request().getParam("id");
+		if (stringId != null && !stringId.trim().isEmpty() ) {
+			Long id = Long.parseLong(stringId);
+		    Author author = authors_.get(id);
+		    context.response().putHeader("content-type", "application/json; charset=utf-8");
+		    // Check if the author has any book in the library before deleting.
+		    if (author != null) {
+		    	for (Map.Entry<String, Book> book : isbnBooks_.entrySet()) {
+		    		if (book.getValue().getAuthor().getId() == id) {
+		    			context.response().setStatusCode(400).end();
+		    			return;
+		    		}
+		    	}
+		    	authors_.remove(id);
+		    	firstNameAuthors_.remove(author.getFirstName());
+		    	lastNameAuthors_.remove(author.getLastName());
+			    context.response().setStatusCode(200).end(Json.encodePrettily(author));
+		    } else
+		    	context.response().end();
+		} else
+			context.response().putHeader("content-type", "application/json; charset=utf-8").setStatusCode(400).end();
 	}
+	private void deleteBook(RoutingContext context) {
+		final String isbn = context.request().getParam("isbn");
+		if (isbn != null && !isbn.trim().isEmpty() ) {
+		    Book book = isbnBooks_.get(isbn);
+		    context.response().putHeader("content-type", "application/json; charset=utf-8")
+		    	.setStatusCode(book == null ? 400 : 200);
+		    if (book != null) {
+		    	isbnBooks_.remove(isbn);
+		    	titleBooks_.remove(book.getTitle());
+		    	authorBooks_.remove(book.getAuthor());
+			    context.response()
+			        .end(Json.encodePrettily(book));
+		    } else
+		    	context.response().end();
+		} else
+		    context.response().putHeader("content-type", "application/json; charset=utf-8")
+	    	.setStatusCode(400).end();			
+	}
+	private void updateAuthor(RoutingContext context) {
+		final Author author = Json.decodeValue(context.getBodyAsString(), Author.class);
+	    context.response().putHeader("content-type", "application/json; charset=utf-8");
+	    Author toUpdate = authors_.get(author.getId());
+		if(author != null && toUpdate != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
+				author.getLastName() != null && !author.getLastName().trim().isEmpty() &&
+				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
+			authors_.replace(author.getId(), author);
+			firstNameAuthors_.replace(author.getFirstName(), author);
+			lastNameAuthors_.replace(author.getLastName(), author);
+			context.response().setStatusCode(200).end(Json.encodePrettily(author));
+		} else
+			context.response().setStatusCode(400).end();
+	}	
 	private void updateBook(RoutingContext context) {
 		final Book book = Json.decodeValue(context.getBodyAsString(), Book.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
 		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() && 
 				isbnBooks_.get(book.getIsbn()) != null) {
 			Book toUpdate = isbnBooks_.get(book.getIsbn());
-			//toUpdate = book;
 			Author author = book.getAuthor();
-			if (author != null) {
-				if (authors_.get(author.getId()) == null) {
-					author.setId(authors_.size() + 1L);
-					authors_.put(author.getId(), author);
-					firstNameAuthors_.put(author.getFirstName(), author);
-					lastNameAuthors_.put(author.getLastName(), author);					
-				} else {
-					Author existing = authors_.get(author.getId());
-					authors_.replace(existing.getId(), author);
-					firstNameAuthors_.replace(existing.getFirstName(), author);					
-					lastNameAuthors_.replace(existing.getLastName(), author);					
-				}
-			}
-			isbnBooks_.replace(book.getIsbn(), book);
-			titleBooks_.put(toUpdate.getTitle(), book);
-			if (authorBooks_.get(author) != null)
-				authorBooks_.replace(author, book);
-			else if (authorBooks_.get(toUpdate.getAuthor()) != null) {
-				authorBooks_.remove(toUpdate.getAuthor());
-				authorBooks_.put(author, book);
-			}
+			if (author != null && authors_.get(author.getId()) != null)
+				toUpdate.setAuthor(authors_.get(author.getId()));
+			if (book.getTitle() != null && !book.getTitle().trim().isEmpty())
+				toUpdate.setTitle(book.getTitle());
+			toUpdate.setPageCount(book.getPageCount());
+			isbnBooks_.replace(book.getIsbn(), toUpdate);
+			titleBooks_.put(toUpdate.getTitle(), toUpdate);
 			context.response().setStatusCode(200).end(Json.encodePrettily(book));
 		} else
 			context.response().setStatusCode(400).end();
 	}
-
 }

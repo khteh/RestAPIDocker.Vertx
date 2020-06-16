@@ -8,8 +8,8 @@ public class Author {
 	private String phone;
 	public Author() {}
 	public Author(Long id) { this.id = id; }
-	public Author(String first, String last) { first_name = first; last_name = last; }
-	public Author(Long id, String first, String last) { this.id = id; first_name = first; last_name = last; }
+	public Author(String first, String last, String email, String phone) { first_name = first; last_name = last; this.email = email; this.phone = phone;}
+	public Author(Long id, String first, String last, String email, String phone) { this.id = id; first_name = first; last_name = last; this.email = email; this.phone = phone;}
 	public Long getId() { return id; }
 	public String getFirstName() { return first_name; }
 	public String getLastName() { return last_name; }
