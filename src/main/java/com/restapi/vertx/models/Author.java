@@ -1,5 +1,6 @@
 package com.restapi.vertx.models;
 
+import io.vertx.core.json.JsonObject;
 public class Author {
 	private Long id;
 	private String first_name;
@@ -8,6 +9,13 @@ public class Author {
 	private String phone;
 	public Author() {}
 	public Author(Long id) { this.id = id; }
+	public Author(JsonObject json) {
+		id = json.getLong("id");
+	    first_name = json.getString("first_name");
+	    last_name = json.getString("last_name");
+	    email = json.getString("email");
+	    phone = json.getString("phone");
+	}	
 	public Author(String first, String last, String email, String phone) { first_name = first; last_name = last; this.email = email; this.phone = phone;}
 	public Author(Long id, String first, String last, String email, String phone) { this.id = id; first_name = first; last_name = last; this.email = email; this.phone = phone;}
 	public Long getId() { return id; }

@@ -1,19 +1,32 @@
 package com.restapi.vertx.verticles;
-import java.util.*;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import io.vertx.core.AbstractVerticle;
+import java.util.*;
+import java.util.stream.Collectors;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.core.Promise;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
 import io.vertx.config.*;
 import io.vertx.core.json.*;
 import io.vertx.ext.web.handler.*;
 import com.restapi.vertx.models.*;
+import com.restapi.vertx.models.Author;
+import com.restapi.vertx.models.Book;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Promise;
+import io.vertx.core.json.Json;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.UpdateResult;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 public class BookVerticle extends AbstractVerticle {
 	private static final Log log = LogFactory.getLog(BookVerticle.class);
+	JDBCClient jdbc_;
 	// Store our product
 	// LinkedHashMap maintains insertion order
 	private Map<Long, Author> authors_ = new LinkedHashMap<>();
@@ -44,6 +57,69 @@ public class BookVerticle extends AbstractVerticle {
 		authorBooks_.put(authors_.get(2), isbnBooks_.get("987654"));
 		authorBooks_.put(authors_.get(3), isbnBooks_.get("456789"));
 	}
+	private void startBackend(Handler<AsyncResult<SQLConnection>> next, Future<Void> fut) {
+		jdbc_.getConnection(ar -> {
+			if (ar.failed())
+				fut.fail(ar.cause());
+			else
+				next.handle(Future.succeededFuture(ar.result()));
+		});
+	}
+	private void populateDatabase(AsyncResult<SQLConnection> conn, Handler<AsyncResult<Void>> next, Future<Void> fut) {
+		if (conn.failed()) {
+			log.error(BookVerticle.class.getName() + " populateDatabase fails! " + conn.cause());
+			fut.fail(conn.cause());
+		} else {
+			SQLConnection connection = conn.result();
+		}
+	}
+	private void startWebApplication(Handler<AsyncResult<HttpServer>> next) {
+		router_ = Router.router(vertx);
+		router_.errorHandler(500, rc -> {
+		      log.error(BookVerticle.class.getName() + " Handling failure");
+		      Throwable failure = rc.failure();
+		      if (failure != null)
+		        failure.printStackTrace();
+		    });
+		router_.get("/api/v1/authors").handler(this::getAllAuthors).failureHandler(ctx -> {
+			  int statusCode = ctx.statusCode();
+		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  // Status code will be 500 for the RuntimeException or 403 for the other failure
+			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+		    });
+		router_.get("/api/v1/books").handler(this::getAllBooks).failureHandler(ctx -> {
+			  int statusCode = ctx.statusCode();
+		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  // Status code will be 500 for the RuntimeException or 403 for the other failure
+			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+		    });
+		router_.get("/api/v1/books/:isbn").handler(this::getBook).failureHandler(ctx -> {
+			  int statusCode = ctx.statusCode();
+		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  // Status code will be 500 for the RuntimeException or 403 for the other failure
+			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+		    });
+		// Add handler to read the request’s body
+		router_.route("/api/v1/books*").handler(BodyHandler.create());
+		router_.route("/api/v1/authors*").handler(BodyHandler.create());
+		router_.post("/api/v1/authors").handler(this::addAuthor);		
+		router_.put("/api/v1/authors/:id").handler(this::updateAuthor);
+		router_.delete("/api/v1/authors/:id").handler(this::deleteAuthor);
+		router_.post("/api/v1/books").handler(this::addBook);		
+		router_.put("/api/v1/books/:isbn").handler(this::updateBook);
+		router_.delete("/api/v1/books/:isbn").handler(this::deleteBook);
+		log.info(BookVerticle.class.getName() + " port: " + config().getInteger("port"));
+		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), next::handle);				
+	}
+	private void completeStartUp(AsyncResult<HttpServer> http, Future<Void> fut) {
+		if (http.succeeded())
+			fut.complete();
+		else {
+			fut.fail(http.cause());
+			log.error(BookVerticle.class.getName() + " completeStartUp fails! " + http.cause());
+		}
+	}
+/*
 	public void start(Promise<Void> startPromise) throws Exception {
 		populateBooks();
 		router_ = Router.router(vertx);
@@ -89,11 +165,32 @@ public class BookVerticle extends AbstractVerticle {
 				log.error("Failed to launch " + BookVerticle.class.getName());
 				startPromise.fail(result.cause());
 			}
-		});		
+		});	
+	}*/
+	@Override
+	public void start(Future<Void> fut) throws Exception {
+		jdbc_ = JDBCClient.createShared(vertx, config(), "BooksDB");
+		startBackend(
+				conn -> populateDatabase(conn, 
+							nothing -> startWebApplication(
+									http -> completeStartUp(http, fut)
+							), 
+							fut), 
+				fut
+		);
 	}
 	private void getAllAuthors(RoutingContext context) {
-	    context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    	.end(Json.encodePrettily(authors_.values()));
+	    //context.response().putHeader("content-type", "application/json; charset=utf-8")
+	    //	.end(Json.encodePrettily(authors_.values()));
+		jdbc_.getConnection(ar -> {
+			SQLConnection conn = ar.result();
+			conn.query("SELECT * from author", result -> {
+				List<Author> authors = result.result().getRows().stream().map(Author::new).collect(Collectors.toList());
+			    context.response().putHeader("content-type", "application/json; charset=utf-8")
+			    	.end(Json.encodePrettily(authors));
+			    conn.close();
+			});
+		});
 	}
 	private void getAllBooks(RoutingContext context) {
 	    context.response().putHeader("content-type", "application/json; charset=utf-8")
