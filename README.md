@@ -17,8 +17,9 @@
 ## Run Locally
 There are 2 ways to run locally:
 ### Using java:
-* `java -jar target/restapi-1.0-fat.jar`
-
+* `java --add-opens java.base/jdk.internal.misc=ALL-UNNAMED -Dio.netty.tryReflectionSetAccessible=true -jar target/restapi-1.0-fat.jar`
+* `--add-opens java.base/jdk.internal.misc=ALL-UNNAMED` option is used for Java 11 and above to avoid this exception: `cannot access class jdk.internal.misc.Unsafe (in module java.base) because module java.base does not export jdk.internal.misc to unnamed module @1d7acb34`
+* `-Dio.netty.tryReflectionSetAccessible=true` option is used to enable Netty to use its direct buffer optimizations
 ### Using Vertx command line interface:
 * Install the Vertx command line interface from https://vertx.io/
 * `vertx run com.restapi.vertx.Launcher -cp target/*`
