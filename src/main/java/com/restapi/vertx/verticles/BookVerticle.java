@@ -36,6 +36,7 @@ public class BookVerticle extends AbstractVerticle {
 	private Map<String, Book> titleBooks_ = new LinkedHashMap<>();
 	private Map<Author, Book> authorBooks_ = new LinkedHashMap<>();
 	Router router_;
+	/*
 	private void populateBooks() {
 		authors_.put(1L, new Author(1L, "JK", "Rowing", "jkrowing@email.com", "+49-123456789"));
 		authors_.put(2L, new Author(2L, "Mickey", "Mouse", "mickey@email.com", "+1-123456789"));
@@ -56,13 +57,14 @@ public class BookVerticle extends AbstractVerticle {
 		authorBooks_.put(authors_.get(1), isbnBooks_.get("123456"));
 		authorBooks_.put(authors_.get(2), isbnBooks_.get("987654"));
 		authorBooks_.put(authors_.get(3), isbnBooks_.get("456789"));
-	}
+	}*/
 	private void startBackend(Handler<AsyncResult<SQLConnection>> next, Future<Void> fut) {
 		jdbc_.getConnection(ar -> {
 			if (ar.failed())
 				fut.fail(ar.cause());
-			else
+			else {
 				next.handle(Future.succeededFuture(ar.result()));
+			}
 		});
 	}
 	private void populateDatabase(AsyncResult<SQLConnection> conn, Handler<AsyncResult<Void>> next, Future<Void> fut) {
@@ -72,6 +74,8 @@ public class BookVerticle extends AbstractVerticle {
 		} else {
 			SQLConnection connection = conn.result();
 			// Populate the DB using the connection
+			next.handle(Future.<Void>succeededFuture());
+            connection.close();          
 		}
 	}
 	private void startWebApplication(Handler<AsyncResult<HttpServer>> next) {
@@ -113,11 +117,12 @@ public class BookVerticle extends AbstractVerticle {
 		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), next::handle);				
 	}
 	private void completeStartUp(AsyncResult<HttpServer> http, Future<Void> fut) {
-		if (http.succeeded())
+		if (http.succeeded()) {
+			log.info(BookVerticle.class.getName() + " completes successfully!");
 			fut.complete();
-		else {
+		} else {
 			fut.fail(http.cause());
-			log.error(BookVerticle.class.getName() + " completeStartUp fails! " + http.cause());
+			log.error(BookVerticle.class.getName() + " fails to start up! " + http.cause());
 		}
 	}
 /*
@@ -194,8 +199,17 @@ public class BookVerticle extends AbstractVerticle {
 		});
 	}
 	private void getAllBooks(RoutingContext context) {
-	    context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    	.end(Json.encodePrettily(isbnBooks_.values()));
+	    //context.response().putHeader("content-type", "application/json; charset=utf-8")
+	    //	.end(Json.encodePrettily(isbnBooks_.values()));
+		jdbc_.getConnection(ar -> {
+			SQLConnection conn = ar.result();
+			conn.query("SELECT * from book", result -> {
+				List<Book> books = result.result().getRows().stream().map(Book::new).collect(Collectors.toList());
+			    context.response().putHeader("content-type", "application/json; charset=utf-8")
+			    	.end(Json.encodePrettily(books));
+			    conn.close();
+			});
+		});		
 	}	
 	private void getBook(RoutingContext context) {
 		final String isbn = context.request().getParam("isbn");        
@@ -227,18 +241,18 @@ public class BookVerticle extends AbstractVerticle {
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
 		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() && 
 				book.getTitle() != null && !book.getTitle().trim().isEmpty() && 
-				book.getAuthor() != null && isbnBooks_.get(book.getIsbn()) == null && titleBooks_.get(book.getTitle()) == null) {
-			Author author = book.getAuthor();
-			if (authors_.get(author.getId()) == null) {
-				author.setId(authors_.size() + 1L);
-				authors_.put(author.getId(), author);
-				firstNameAuthors_.put(author.getFirstName(), author);
-				lastNameAuthors_.put(author.getLastName(), author);
+				isbnBooks_.get(book.getIsbn()) == null && titleBooks_.get(book.getTitle()) == null) {
+			Long author_id = book.getAuthorId();
+			if (authors_.get(author_id) == null) {
+//				author.setId(authors_.size() + 1L);
+//				authors_.put(author.getId(), author); FIXME
+//				firstNameAuthors_.put(author.getFirstName(), author);
+//				lastNameAuthors_.put(author.getLastName(), author);
 			}
 			book.setId(isbnBooks_.size() + 1L);
 			isbnBooks_.put(book.getIsbn(), book);
 			titleBooks_.put(book.getTitle(), book);
-			authorBooks_.put(author, book);
+//			authorBooks_.put(author, book);
 			context.response().setStatusCode(201).end(Json.encodePrettily(book));
 		} else
 			context.response().setStatusCode(400).end();
@@ -252,7 +266,7 @@ public class BookVerticle extends AbstractVerticle {
 		    // Check if the author has any book in the library before deleting.
 		    if (author != null) {
 		    	for (Map.Entry<String, Book> book : isbnBooks_.entrySet()) {
-		    		if (book.getValue().getAuthor().getId() == id) {
+		    		if (book.getValue().getAuthorId() == id) {
 		    			context.response().setStatusCode(400).end();
 		    			return;
 		    		}
@@ -275,7 +289,7 @@ public class BookVerticle extends AbstractVerticle {
 		    if (book != null) {
 		    	isbnBooks_.remove(isbn);
 		    	titleBooks_.remove(book.getTitle());
-		    	authorBooks_.remove(book.getAuthor());
+//		    	authorBooks_.remove(book.getAuthor()); FIXME
 			    context.response()
 			        .end(Json.encodePrettily(book));
 		    } else
@@ -304,9 +318,9 @@ public class BookVerticle extends AbstractVerticle {
 		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() && 
 				isbnBooks_.get(book.getIsbn()) != null) {
 			Book toUpdate = isbnBooks_.get(book.getIsbn());
-			Author author = book.getAuthor();
-			if (author != null && authors_.get(author.getId()) != null)
-				toUpdate.setAuthor(authors_.get(author.getId()));
+			Long author_id = book.getAuthorId();
+//			if (author != null && authors_.get(author_id) != null)
+//				toUpdate.setAuthor(authors_.get(author_id));
 			if (book.getTitle() != null && !book.getTitle().trim().isEmpty())
 				toUpdate.setTitle(book.getTitle());
 			toUpdate.setPageCount(book.getPageCount());
