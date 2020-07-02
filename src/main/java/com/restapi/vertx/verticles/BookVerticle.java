@@ -71,6 +71,7 @@ public class BookVerticle extends AbstractVerticle {
 			fut.fail(conn.cause());
 		} else {
 			SQLConnection connection = conn.result();
+			// Populate the DB using the connection
 		}
 	}
 	private void startWebApplication(Handler<AsyncResult<HttpServer>> next) {

@@ -16,16 +16,30 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static org.junit.jupiter.api.Assertions.*;
 import java.io.IOException;
 import java.net.ServerSocket;
-
 import org.junit.jupiter.api.*;
 import com.restapi.vertx.verticles.SimpleHttpVerticle;
 @ExtendWith(VertxExtension.class)
 public class SimpleHttpVerticleTests {
+	private static int port_;
 	@BeforeAll
 	@DisplayName("Deploy a verticle")
-	static void prepare(Vertx vertx, VertxTestContext testContext) {
-	    vertx.deployVerticle(new SimpleHttpVerticle(), testContext.completing());
+	public static void prepare(Vertx vertx, VertxTestContext context) {
 	    System.out.println(SimpleHttpVerticleTests.class.getName() + " setup completes");
+		try {
+			ConfigStoreOptions fileStore = new ConfigStoreOptions()
+					.setType("file")
+					.setFormat("json")
+					.setConfig(new JsonObject().put("path", "src/main/config/vertx.json"));
+			ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);		
+			ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
+			retriever.getConfig(json -> {
+				JsonObject config = json.result();
+				port_ = config.getInteger("port");
+				DeploymentOptions options = new DeploymentOptions().setConfig(config);
+				vertx.deployVerticle(SimpleHttpVerticle.class.getName(), options, context.completing());			});			
+		} catch (Exception e) {
+			System.out.println(SimpleHttpVerticle.class.getName() + " setup exception!" + e.toString());
+		}	    
 	}	
 	@Test
 	void SimpleHttpVerticleTest(Vertx vertx, VertxTestContext testContext) {
@@ -43,38 +57,7 @@ public class SimpleHttpVerticleTests {
 	  }
 	@AfterAll
 	@DisplayName("Check that the verticle is still there")
-	void lastChecks(Vertx vertx) {
+	public static void lastChecks(Vertx vertx) {
 		assertEquals(1, vertx.deploymentIDs().size());
 	}	
-	/*
-	@BeforeAll
-	public void setup(Vertx vertx, VertxTestContext context) throws IOException {
-		vertx.deployVerticle(SimpleHttpVerticle.class.getName(), context.completing());	
-	}
-	@Test
-	public void successTest(Vertx vertx, VertxTestContext testContext) {
-		ConfigStoreOptions fileStore = new ConfigStoreOptions()
-				.setType("file")
-				.setFormat("json")
-				.setConfig(new JsonObject().put("path", "src/main/config/vertx.json"));
-		ConfigRetrieverOptions options = new ConfigRetrieverOptions().addStore(fileStore);		
-		ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
-		retriever.getConfig(json -> {
-			JsonObject config = json.result();		
-		WebClient client = WebClient.create(vertx);
-		// Send a GET request
-		client
-		  .get(config.getInteger("port"), "localhost", "/")
-		  .send(ar -> {
-			  if (!ar.succeeded())
-				  System.out.println("SimpleHttpVerticleTests Something went wrong: " + ar.cause().getMessage());
-			  assertTrue(ar.succeeded());
-		      // Obtain response
-		      HttpResponse<Buffer> response = ar.result();	      
-		      assertEquals(200, response.statusCode());
-		      assertTrue(response.body().toString().contains("Vertx HTTP Server"));
-		  });
-		});
-	}
-	*/
 }

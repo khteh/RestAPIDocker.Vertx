@@ -22,9 +22,25 @@ import org.skyscreamer.jsonassert.*;
 //import org.junit.runner.RunWith;
 @ExtendWith(VertxExtension.class)
 public class BookVerticleTests {
+	private static int port_;
 	@BeforeAll
 	public static void setup(Vertx vertx, VertxTestContext context) throws IOException {
-		vertx.deployVerticle(BookVerticle.class.getName(), context.completing());			
+		try {
+			ConfigStoreOptions fileStore = new ConfigStoreOptions()
+					.setType("file")
+					.setFormat("json")
+					.setConfig(new JsonObject().put("path", "src/main/config/vertx.json"));
+			ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);		
+			ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
+			retriever.getConfig(json -> {
+				JsonObject config = json.result();
+				port_ = config.getInteger("port");
+				DeploymentOptions options = new DeploymentOptions().setConfig(config);
+				vertx.deployVerticle(BookVerticle.class.getName(), options, context.completing());
+			});			
+		} catch (Exception e) {
+			System.out.println(BookVerticleTests.class.getName() + " setup exception!" + e.toString());
+		}
 	}
 	@Test
 	public void successTest(Vertx vertx, VertxTestContext context) {
@@ -35,18 +51,8 @@ public class BookVerticleTests {
 				"  \"datePublished\": \"01-02-2017\",\r\n" + 
 				"  \"wordCount\": 1578\r\n" + 
 				"}";
-		ConfigStoreOptions fileStore = new ConfigStoreOptions()
-				.setType("file")
-				.setFormat("json")
-				.setConfig(new JsonObject().put("path", "src/main/config/vertx.json"));
-		ConfigRetrieverOptions options = new ConfigRetrieverOptions().addStore(fileStore);		
-		ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
-		retriever.getConfig(json -> {
-			JsonObject config = json.result();
 		WebClient client = WebClient.create(vertx);
-		// Send a GET request
-		client
-		  .get(config.getInteger("port"), "localhost", "/api/v1/books/book/123")
+		client.get(port_, "localhost", "/api/v1/books/book/123")
 		  .send(ar -> {
 			  if (!ar.succeeded())
 				  System.out.println(BookVerticleTests.class.getName() + " get error: " + ar.cause().getMessage());
@@ -61,7 +67,6 @@ public class BookVerticleTests {
 		      } catch (JSONException e) {
 		    	  System.out.println(BookVerticleTests.class.getName() + " exception!" + e.toString());
 		      }
-		  });
-		});		
+		  });		
 	}
 }
