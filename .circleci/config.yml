@@ -32,9 +32,9 @@ jobs:
       - restore_cache:
           name: Restore Maven Dependency Cache
           keys:
-          - v2-dependencies-{{ checksum "pom.xml" }}
+          - v1-dependencies-{{ checksum "pom.xml" }}
           # fallback to using the latest cache if no exact match is found
-          - v2-dependencies-
+          - v1-dependencies-
       - setup_remote_docker:
           docker_layer_caching: false
       # Maven clean and install projects
@@ -77,7 +77,7 @@ jobs:
           name: Save Maven Dependency Cache
           paths:
             - ~/.m2
-          key: v2-dependencies-{{ checksum "pom.xml" }}
+          key: v1-dependencies-{{ checksum "pom.xml" }}
       - persist_to_workspace:
           name: Save Workspace
           root: .
