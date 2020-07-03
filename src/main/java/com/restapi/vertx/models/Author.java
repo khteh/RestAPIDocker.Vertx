@@ -1,6 +1,7 @@
 package com.restapi.vertx.models;
 
 import io.vertx.core.json.JsonObject;
+
 public class Author {
 	private Long id;
 	private String first_name;
@@ -36,6 +37,6 @@ public class Author {
 	public int hashCode() { return id.hashCode(); }
 	@Override
 	public String toString() {
-		return "Author { id = " + id + ", first_name = '" + first_name + "', last_name = '" + last_name + "'}";
+		return "Author { id = " + id + ", first_name = '" + first_name + "', last_name = '" + last_name + "', email = '" + email + "', phone = '" + phone + "'}";
 	}
 }

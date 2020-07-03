@@ -16,6 +16,11 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import com.restapi.vertx.verticles.*;
 import org.junit.jupiter.api.*;
+import org.json.*;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNot.*;
+import static org.hamcrest.MatcherAssert.*;
 import static org.junit.jupiter.api.Assertions.*;
 import org.json.JSONException;
 import org.skyscreamer.jsonassert.*;
@@ -29,7 +34,7 @@ public class BookVerticleTests {
 			ConfigStoreOptions fileStore = new ConfigStoreOptions()
 					.setType("file")
 					.setFormat("json")
-					.setConfig(new JsonObject().put("path", "src/main/config/vertx.json"));
+					.setConfig(new JsonObject().put("path", "src/main/config/vertx-test.json"));
 			ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);		
 			ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
 			retriever.getConfig(json -> {
@@ -39,34 +44,57 @@ public class BookVerticleTests {
 				vertx.deployVerticle(BookVerticle.class.getName(), options, context.completing());
 			});			
 		} catch (Exception e) {
-			System.out.println(BookVerticleTests.class.getName() + " setup exception!" + e.toString());
+			System.out.println("Setup exception!" + e.toString());
 		}
 	}
 	@Test
-	public void successTest(Vertx vertx, VertxTestContext context) {
-		String expect = "{\r\n" + 
-				"  \"id\": \"123\",\r\n" + 
-				"  \"content\": \"This is an intro to vertx\",\r\n" + 
-				"  \"author\": \"Donald Trump\",\r\n" + 
-				"  \"datePublished\": \"01-02-2017\",\r\n" + 
-				"  \"wordCount\": 1578\r\n" + 
-				"}";
+	public void getAuthorsSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
-		client.get(port_, "localhost", "/api/v1/books/book/123")
+		client.get(port_, "localhost", "/api/v1/authors")
 		  .send(ar -> {
 			  if (!ar.succeeded())
-				  System.out.println(BookVerticleTests.class.getName() + " get error: " + ar.cause().getMessage());
+				  System.out.println("getAuthorsSuccessTest() fails! " + ar.cause().getMessage());
 			  assertTrue(ar.succeeded());
 		      // Obtain response
 		      HttpResponse<Buffer> response = ar.result();
 			  System.out.println("Status Code: " + response.statusCode());		      
 		      assertEquals(200, response.statusCode());
-		      //context.assertTrue(response.body().toString().contains("Vertx HTTP Server"));
 		      try {
-		    	  JSONAssert.assertEquals(expect, response.body().toString(), false);
+		    	  JSONArray authors = new JSONArray(response.body().toString());
+		    	  assertFalse(authors.length() == 0);
+		    	  assertTrue(authors.length() == 2);
+		    	  assertNotNull(authors.get(0));
+		    	  assertNotNull(authors.get(1));
+		    	  context.completeNow();
 		      } catch (JSONException e) {
-		    	  System.out.println(BookVerticleTests.class.getName() + " exception!" + e.toString());
+		    	  System.out.println("getAuthorsSuccessTest() Exception!" + e.toString());
+		    	  context.completeNow();
 		      }
 		  });		
 	}
+	@Test
+	public void getBooksSuccessTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.get(port_, "localhost", "/api/v1/books")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("getBooksSuccessTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();
+			  System.out.println("Status Code: " + response.statusCode());		      
+		      assertEquals(200, response.statusCode());
+		      try {
+		    	  JSONArray books = new JSONArray(response.body().toString());
+		    	  assertFalse(books.length() == 0);
+		    	  assertTrue(books.length() == 2);
+		    	  assertNotNull(books.get(0));
+		    	  assertNotNull(books.get(1));
+		    	  context.completeNow();
+		      } catch (JSONException e) {
+		    	  System.out.println("getBooksSuccessTest() Exception!" + e.toString());
+		    	  context.completeNow();
+		      }
+		  });		
+	}	
 }

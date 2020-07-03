@@ -39,5 +39,5 @@ public class Book {
 	@Override
 	public String toString() {
 		return "Book { id = " + id + ", title = '" + title + "', isbn = '" + isbn + "', pageCount = " + page_count + ", author_id = " + author_id + "}";
-	}    
+	}
 }

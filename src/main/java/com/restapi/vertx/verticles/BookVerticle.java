@@ -26,7 +26,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 public class BookVerticle extends AbstractVerticle {
 	private static final Log log = LogFactory.getLog(BookVerticle.class);
-	JDBCClient jdbc_;
+	private JDBCClient jdbc_;
 	// Store our product
 	// LinkedHashMap maintains insertion order
 	private Map<Long, Author> authors_ = new LinkedHashMap<>();
@@ -36,28 +36,6 @@ public class BookVerticle extends AbstractVerticle {
 	private Map<String, Book> titleBooks_ = new LinkedHashMap<>();
 	private Map<Author, Book> authorBooks_ = new LinkedHashMap<>();
 	Router router_;
-	/*
-	private void populateBooks() {
-		authors_.put(1L, new Author(1L, "JK", "Rowing", "jkrowing@email.com", "+49-123456789"));
-		authors_.put(2L, new Author(2L, "Mickey", "Mouse", "mickey@email.com", "+1-123456789"));
-		authors_.put(3L, new Author(3L, "Donald", "Duck", "donald@email.com", "+1-987654321"));
-		firstNameAuthors_.put("JK", authors_.get(1L));
-		firstNameAuthors_.put("Mickey", authors_.get(2L));
-		firstNameAuthors_.put("Donald", authors_.get(3L));
-		lastNameAuthors_.put("JK", authors_.get(1L));
-		lastNameAuthors_.put("Mickey", authors_.get(2L));
-		lastNameAuthors_.put("Donald", authors_.get(3L));
-		// Book(Long id, String title, String isbn, int count, Author author)
-		isbnBooks_.put("123456", new Book(1L, "This is an intro to vertx", "123456", 123, authors_.get(1L)));
-		isbnBooks_.put("987654", new Book(2L, "Hello World!!!", "987654", 456, authors_.get(2L)));
-		isbnBooks_.put("456789", new Book(3L, "This is a great book!", "456789", 789, authors_.get(3L)));
-		titleBooks_.put("This is an intro to vertx", isbnBooks_.get("123456"));
-		titleBooks_.put("Hello World!!!", isbnBooks_.get("987654"));
-		titleBooks_.put("This is a great book!", isbnBooks_.get("456789"));
-		authorBooks_.put(authors_.get(1), isbnBooks_.get("123456"));
-		authorBooks_.put(authors_.get(2), isbnBooks_.get("987654"));
-		authorBooks_.put(authors_.get(3), isbnBooks_.get("456789"));
-	}*/
 	private void startBackend(Handler<AsyncResult<SQLConnection>> next, Future<Void> fut) {
 		jdbc_.getConnection(ar -> {
 			if (ar.failed())
@@ -69,38 +47,125 @@ public class BookVerticle extends AbstractVerticle {
 	}
 	private void populateDatabase(AsyncResult<SQLConnection> conn, Handler<AsyncResult<Void>> next, Future<Void> fut) {
 		if (conn.failed()) {
-			log.error(BookVerticle.class.getName() + " populateDatabase fails! " + conn.cause());
+			log.error("populateDatabase fails! " + conn.cause());
 			fut.fail(conn.cause());
 		} else {
 			SQLConnection connection = conn.result();
 			// Populate the DB using the connection
-			next.handle(Future.<Void>succeededFuture());
-            connection.close();          
+			log.info("populateDatabase() Create author table if not exists...");
+			String connectionString = config().getString("url");
+			String strCreateAuthor = "", strCreateBook = "";
+			if (connectionString.contains("hsqldb")) {
+				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (\"id\" INTEGER IDENTITY PRIMARY KEY, \"first_name\" varchar(255), \"last_name\" varchar(255), \"email\" varchar(255), \"phone\" varchar(255))";
+				strCreateBook = "CREATE TABLE IF NOT EXISTS book (\"id\" INTEGER IDENTITY PRIMARY KEY, \"title\" varchar(255), \"isbn\" varchar(255), \"page_count\" INTEGER, \"author_id\" INTEGER)";
+			} else if (connectionString.contains("mysql")) {
+				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name varchar(255), last_name varchar(255), email varchar(255), phone varchar(255))";
+				strCreateBook = "CREATE TABLE IF NOT EXISTS book (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255), isbn varchar(255), page_count INTEGER, author_id INTEGER)";				
+			} else {
+				log.error("Invalid DB configuration! " + connectionString);
+				fut.fail("Invalid DB configuration! " + connectionString);
+				connection.close();
+				return;
+			}
+			final String sqlCreateAuthor = strCreateAuthor, sqlCreateBook = strCreateBook;
+			connection.execute(sqlCreateAuthor,
+		              ar -> {
+		                if (ar.failed()) {
+		                	log.error("Create author table if not exists failed! " + ar.cause());
+		                  fut.fail(ar.cause());
+		                  connection.close();
+		                  return;
+		                }
+		        log.info("populateDatabase() Create book table if not exists...");
+		        connection.execute(sqlCreateBook,
+		  		       ar1 -> {
+		  		       	if (ar1.failed()) {
+		  		       		log.error("Create book table if not exists failed! " + ar1.cause());
+		  		        	fut.fail(ar1.cause());
+		  		            connection.close();
+		  		            return;
+		  		        }
+			connection.query("SELECT * from author", result -> {
+				if (!result.succeeded()) {
+					log.error("Failed to query author table! " + result.cause());
+                	connection.close();					
+                	return;					                        										
+				} else if (result.result().getNumRows() == 0) {
+					log.info("populateDatabase() Populate author table...");
+					insertAuthor(new Author("JK", "Rowing", "jk.rowing@email.com", "+49123456789"),
+			                connection,
+			                (author) -> insertAuthor(new Author("Mickey", "Mouse", "mickey@email.com", "+1987654321"),
+				                        connection,
+				                        (author1) -> insertBook(new Book("Harry Porter", "123456789", 123, author.result().getId()),
+				                        					connection,
+				                        					(book) -> insertBook(new Book("Disneyland", "987654321", 456, author1.result().getId()),
+								                        				connection,
+								                        				(book1) -> {
+								    			                        	next.handle(Future.<Void>succeededFuture());
+								    			                        	connection.close();					                        					
+								                        				})
+				                        	)
+				                        )
+					);
+				} else {
+					// Populate Book table
+					log.info("populateDatabase() " + result.result().getNumRows() + " authors");
+					log.info("populateDatabase() Populate book table...");
+					connection.query("SELECT * from book", result1 -> {
+						if (!result1.succeeded()) {
+							log.error("Failed to query book table! " + result1.cause());
+		                	connection.close();					
+		                	return;					                        										
+						} else if (result1.result().getNumRows() == 0) {
+							final Integer index = 0;
+							List<Author> authors = result.result().getRows().stream().map(Author::new).collect(Collectors.toList());
+							insertBook(new Book("Harry Porter", "123456789", 123, authors.get(index).getId()),
+                					connection,
+                					(book) -> {
+                						Integer tmp = index;
+                						if (tmp < authors.size() - 1)
+                							tmp = tmp + 1;
+                						insertBook(new Book("Disneyland", "987654321", 456, authors.get(tmp).getId()),
+		                        				connection,
+		                        				(book1) -> {
+		    			                        	next.handle(Future.<Void>succeededFuture());
+		    			                        	connection.close();					                        					
+		                        				});
+                					}
+							);							
+						} else {
+							next.handle(Future.<Void>succeededFuture());
+				            connection.close();          							
+						}
+					});
+				}
+			}); // connection.query
+	       }); // Create Book table
+	      }); // Create Author table
 		}
 	}
 	private void startWebApplication(Handler<AsyncResult<HttpServer>> next) {
 		router_ = Router.router(vertx);
 		router_.errorHandler(500, rc -> {
-		      log.error(BookVerticle.class.getName() + " Handling failure");
 		      Throwable failure = rc.failure();
 		      if (failure != null)
-		        failure.printStackTrace();
+		    	  failure.printStackTrace();
 		    });
 		router_.get("/api/v1/authors").handler(this::getAllAuthors).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
-		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+		      log.error("/api/v1/authors fails! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
 			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
 		    });
 		router_.get("/api/v1/books").handler(this::getAllBooks).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
-		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  log.error("/api/v1/books fails! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
 			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
 		    });
 		router_.get("/api/v1/books/:isbn").handler(this::getBook).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
-		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
+			  log.error("/api/v1/books/:isbn fails! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
 			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
 		    });
@@ -113,101 +178,65 @@ public class BookVerticle extends AbstractVerticle {
 		router_.post("/api/v1/books").handler(this::addBook);		
 		router_.put("/api/v1/books/:isbn").handler(this::updateBook);
 		router_.delete("/api/v1/books/:isbn").handler(this::deleteBook);
-		log.info(BookVerticle.class.getName() + " port: " + config().getInteger("port"));
 		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), next::handle);				
 	}
 	private void completeStartUp(AsyncResult<HttpServer> http, Future<Void> fut) {
 		if (http.succeeded()) {
-			log.info(BookVerticle.class.getName() + " completes successfully!");
+			log.info("Completes successfully!");
 			fut.complete();
 		} else {
 			fut.fail(http.cause());
-			log.error(BookVerticle.class.getName() + " fails to start up! " + http.cause());
+			log.error("Start up fails! " + http.cause());
 		}
 	}
-/*
-	public void start(Promise<Void> startPromise) throws Exception {
-		populateBooks();
-		router_ = Router.router(vertx);
-		router_.errorHandler(500, rc -> {
-		      log.error(BookVerticle.class.getName() + " Handling failure");
-		      Throwable failure = rc.failure();
-		      if (failure != null)
-		        failure.printStackTrace();
-		    });
-		router_.get("/api/v1/authors").handler(this::getAllAuthors).failureHandler(ctx -> {
-			  int statusCode = ctx.statusCode();
-		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
-			  // Status code will be 500 for the RuntimeException or 403 for the other failure
-			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
-		    });
-		router_.get("/api/v1/books").handler(this::getAllBooks).failureHandler(ctx -> {
-			  int statusCode = ctx.statusCode();
-		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
-			  // Status code will be 500 for the RuntimeException or 403 for the other failure
-			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
-		    });
-		router_.get("/api/v1/books/:isbn").handler(this::getBook).failureHandler(ctx -> {
-			  int statusCode = ctx.statusCode();
-		      log.error(BookVerticle.class.getName() + " Oopsy Daisy! " + statusCode);			  
-			  // Status code will be 500 for the RuntimeException or 403 for the other failure
-			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
-		    });
-		// Add handler to read the request’s body
-		router_.route("/api/v1/books*").handler(BodyHandler.create());
-		router_.route("/api/v1/authors*").handler(BodyHandler.create());
-		router_.post("/api/v1/authors").handler(this::addAuthor);		
-		router_.put("/api/v1/authors/:id").handler(this::updateAuthor);
-		router_.delete("/api/v1/authors/:id").handler(this::deleteAuthor);
-		router_.post("/api/v1/books").handler(this::addBook);		
-		router_.put("/api/v1/books/:isbn").handler(this::updateBook);
-		router_.delete("/api/v1/books/:isbn").handler(this::deleteBook);
-		log.info(BookVerticle.class.getName() + " port: " + config().getInteger("port"));
-		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), result -> {
-			if (result.succeeded()) {
-				log.info(BookVerticle.class.getName() + " launched successfully!");
-				startPromise.complete();
-			} else {
-				log.error("Failed to launch " + BookVerticle.class.getName());
-				startPromise.fail(result.cause());
-			}
-		});	
-	}*/
 	@Override
 	public void start(Future<Void> fut) throws Exception {
 		jdbc_ = JDBCClient.createShared(vertx, config(), "BooksDB");
 		startBackend(
 				conn -> populateDatabase(conn, 
 							nothing -> startWebApplication(
-									http -> completeStartUp(http, fut)
-							), 
-							fut), 
+										http -> completeStartUp(http, fut)
+									), 
+						fut), 
 				fut
 		);
 	}
+	@Override
+	public void stop() throws Exception {
+	    // Close the JDBC client.
+	    jdbc_.close();
+	}	
 	private void getAllAuthors(RoutingContext context) {
-	    //context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    //	.end(Json.encodePrettily(authors_.values()));
 		jdbc_.getConnection(ar -> {
 			SQLConnection conn = ar.result();
 			conn.query("SELECT * from author", result -> {
-				List<Author> authors = result.result().getRows().stream().map(Author::new).collect(Collectors.toList());
-			    context.response().putHeader("content-type", "application/json; charset=utf-8")
-			    	.end(Json.encodePrettily(authors));
-			    conn.close();
+				if (!result.succeeded()) {
+					log.error("Failed to query author table! " + result.cause());
+				    context.response().setStatusCode(500).end();					
+                	conn.close();									                        										
+				} else {
+					List<Author> authors = result.result().getRows().stream().map(Author::new).collect(Collectors.toList());
+				    context.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
+				    	.end(Json.encodePrettily(authors));
+				    conn.close();
+				}
 			});
 		});
 	}
 	private void getAllBooks(RoutingContext context) {
-	    //context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    //	.end(Json.encodePrettily(isbnBooks_.values()));
 		jdbc_.getConnection(ar -> {
 			SQLConnection conn = ar.result();
 			conn.query("SELECT * from book", result -> {
-				List<Book> books = result.result().getRows().stream().map(Book::new).collect(Collectors.toList());
-			    context.response().putHeader("content-type", "application/json; charset=utf-8")
-			    	.end(Json.encodePrettily(books));
-			    conn.close();
+				if (!result.succeeded()) {
+					log.error("Failed to query book table! " + result.cause());
+					context.response().setStatusCode(500).end();
+                	conn.close();									                        										
+				} else {			
+					List<Book> books = result.result().getRows().stream().map(Book::new).collect(Collectors.toList());
+				    context.response().setStatusCode(200).putHeader("content-type", "application/json; charset=utf-8")
+				    	.end(Json.encodePrettily(books));
+				    conn.close();
+				}
 			});
 		});		
 	}	
@@ -330,4 +359,60 @@ public class BookVerticle extends AbstractVerticle {
 		} else
 			context.response().setStatusCode(400).end();
 	}
+	private void insertAuthor(Author author, SQLConnection connection, Handler<AsyncResult<Author>> next) 
+	{
+		String connectionString = config().getString("url");
+		String str = "", strCreateBook = "";
+		if (connectionString.contains("hsqldb"))
+			str = "INSERT INTO author (\"first_name\", \"last_name\", \"email\", \"phone\") VALUES (?, ?, ?, ?)";
+		else if (connectionString.contains("mysql"))
+			str = "INSERT INTO author (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)";			
+		else {
+			log.error("Invalid DB configuration! " + connectionString);
+			next.handle(Future.failedFuture("Invalid DB configuration! " + connectionString));
+			return;
+		}		
+		final String sql = str; 
+		connection.updateWithParams(sql,
+			new JsonArray().add(author.getFirstName()).add(author.getLastName()).add(author.getEmail()).add(author.getPhone()),
+		      (ar) -> {
+		        if (ar.failed()) {
+		        	next.handle(Future.failedFuture(ar.cause()));
+		        	return;
+		        }
+		        UpdateResult result = ar.result();
+		        // Build a new author instance with the generated id.
+		        log.info("insertAuthor() id: "+result.getKeys().getLong(0));
+		        author.setId(result.getKeys().getLong(0));
+		        next.handle(Future.succeededFuture(author));
+		    });
+	}
+	private void insertBook(Book book, SQLConnection connection, Handler<AsyncResult<Book>> next) 
+	{
+		String connectionString = config().getString("url");
+		String str = "", strCreateBook = "";
+		if (connectionString.contains("hsqldb"))
+			str = "INSERT INTO book (\"title\", \"isbn\", \"page_count\", \"author_id\") VALUES (?, ?, ?, ?)";
+		else if (connectionString.contains("mysql"))
+			str = "INSERT INTO book (title, isbn, page_count, author_id) VALUES (?, ?, ?, ?)";			
+		else {
+			log.error("Invalid DB configuration! " + connectionString);
+			next.handle(Future.failedFuture("Invalid DB configuration! " + connectionString));
+			return;
+		}		
+		final String sql = str; 		
+		connection.updateWithParams(sql,
+			new JsonArray().add(book.getTitle()).add(book.getIsbn()).add(book.getPageCount()).add(book.getAuthorId()),
+		      (ar) -> {
+		        if (ar.failed()) {
+		        	next.handle(Future.failedFuture(ar.cause()));
+		        	return;
+		        }
+		        UpdateResult result = ar.result();
+		        // Build a new book instance with the generated id.
+		        log.info("insertBook() id: "+result.getKeys().getLong(0));
+		        book.setId(result.getKeys().getLong(0));
+		        next.handle(Future.succeededFuture(book));
+		    });
+	}	
 }
