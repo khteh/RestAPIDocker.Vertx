@@ -8,6 +8,7 @@ ENV VERTICLE_FILE target/restapi-$VERSION-fat.jar
 ENV VERTICLE_HOME /opt/verticles
 # Copy your verticle to the container
 COPY $VERTICLE_FILE $VERTICLE_HOME/
+COPY target/mysql-connector-java-8.0.20.jar $VERTICLE_HOME/
 # Launch the verticle
 WORKDIR $VERTICLE_HOME
 EXPOSE 8080

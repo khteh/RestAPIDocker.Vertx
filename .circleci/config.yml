@@ -52,6 +52,9 @@ jobs:
       - run: 
           name: Build Application
           command: mvn clean install dependency:resolve-plugins dependency:go-offline -Pprod -DskipTests
+      - run:
+          name: Add mysql java connector to targe folder
+          command: cp ~/.m2/repository/mysql/mysql-connector-java/8.0.20/mysql-connector-java-8.0.20.jar target
       - run: 
           name: Test Application
           command: mvn test          
