@@ -1,4 +1,4 @@
-# RestAPI with Java Vertx3 and Docker
+# RestAPI with Java Vertx3, MySQL 8.0.20, Asynchronous SQL Client and Docker
 * 1 verticle:
   - Book
 
@@ -12,6 +12,10 @@
 
 ## Continuous Integration
 * Integrated with CircleCI
+
+# Test the application:
+* Tests are performed using HSQLDB in-memory database
+* `mvn test`
 
 # Start the application:
 ## Run Locally
@@ -58,9 +62,3 @@ There are 2 ways to run locally:
 ```
 * DELETE: localhost:8080/api/v1/books/012345
 * DELETE: localhost:8080/api/v1/authors/1
-
-# Future Work
-* Add ORM (Hybernate JPA) in worker verticle. JPA is blocking.
-* https://stackoverflow.com/questions/54384677/how-to-use-hibernate-as-non-blocking-orm-with-vert-x
-* https://groups.google.com/forum/#!topic/vertx/SBfVL21fhZM
-
