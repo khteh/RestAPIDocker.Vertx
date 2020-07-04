@@ -60,6 +60,8 @@ public class BookVerticleTests {
 		      HttpResponse<Buffer> response = ar.result();	      
 		      assertEquals(200, response.statusCode());
 		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
+		      assertNotNull(response.body());
+		      assertFalse(response.body().toString().isEmpty());		      
 		      try {
 		    	  JSONArray authors = new JSONArray(response.body().toString());
 		    	  assertFalse(authors.length() == 0);
@@ -68,6 +70,7 @@ public class BookVerticleTests {
 		    	  assertNotNull(authors.get(1));
 		    	  context.completeNow();
 		      } catch (JSONException e) {
+		    	  assertFalse(true);
 		    	  System.out.println("getAuthorsSuccessTest() Exception!" + e.toString());
 		    	  context.completeNow();
 		      }
@@ -85,6 +88,8 @@ public class BookVerticleTests {
 		      HttpResponse<Buffer> response = ar.result();	      
 		      assertEquals(200, response.statusCode());
 		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
+		      assertNotNull(response.body());
+		      assertFalse(response.body().toString().isEmpty());		      
 		      try {
 		    	  JSONArray books = new JSONArray(response.body().toString());
 		    	  assertFalse(books.length() == 0);
@@ -93,6 +98,7 @@ public class BookVerticleTests {
 		    	  assertNotNull(books.get(1));
 		    	  context.completeNow();
 		      } catch (JSONException e) {
+		    	  assertFalse(true);
 		    	  System.out.println("getBooksSuccessTest() Exception!" + e.toString());
 		    	  context.completeNow();
 		      }
