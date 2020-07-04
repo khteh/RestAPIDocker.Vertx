@@ -1,5 +1,5 @@
 {
 	"port" : 8080,
-	"url": "jdbc:hsqldb:mem:it-test?shutdown=true",
+	"url": "jdbc:hsqldb:mem:it-test?shutdown=true;sql.syntax_mys=true",
 	"driver_class": "org.hsqldb.jdbcDriver"
 }

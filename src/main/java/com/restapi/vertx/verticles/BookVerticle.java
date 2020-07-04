@@ -29,12 +29,6 @@ public class BookVerticle extends AbstractVerticle {
 	private JDBCClient jdbc_;
 	// Store our product
 	// LinkedHashMap maintains insertion order
-	private Map<Long, Author> authors_ = new LinkedHashMap<>();
-	private Map<String, Author> firstNameAuthors_ = new LinkedHashMap<>();
-	private Map<String, Author> lastNameAuthors_ = new LinkedHashMap<>();
-	private Map<String, Book> isbnBooks_ = new LinkedHashMap<>();	
-	private Map<String, Book> titleBooks_ = new LinkedHashMap<>();
-	private Map<Author, Book> authorBooks_ = new LinkedHashMap<>();
 	Router router_;
 	private void startBackend(Handler<AsyncResult<SQLConnection>> next, Future<Void> fut) {
 		jdbc_.getConnection(ar -> {
@@ -241,15 +235,21 @@ public class BookVerticle extends AbstractVerticle {
 		});		
 	}	
 	private void getBook(RoutingContext context) {
-		final String isbn = context.request().getParam("isbn");        
-	    Book book = isbnBooks_.get(isbn);
-	    context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    	.setStatusCode(book == null ? 400 : 200);
-	    if (book != null)
-		    context.response()
-		        .end(Json.encodePrettily(book));
-	    else
-	    	context.response().end();
+		final String isbn = context.request().getParam("isbn");
+	    context.response().putHeader("content-type", "application/json; charset=utf-8");	
+		if(isbn != null && !isbn.isEmpty()) {
+		jdbc_.getConnection(ar -> {
+			SQLConnection conn = ar.result();
+			String query = "SELECT * FROM book WHERE isbn=?";
+			selectBook(query, new JsonArray().add(isbn), conn, result -> {
+		          if (result.succeeded())
+		        	  context.response().setStatusCode(200).end(Json.encodePrettily(result.result()));
+		          else
+		        	  context.response().setStatusCode(500).end();
+		          conn.close();
+		        });			
+		});
+		}
 	}
 	private void addAuthor(RoutingContext context) {
 		final Author author = Json.decodeValue(context.getBodyAsString(), Author.class);
@@ -257,32 +257,29 @@ public class BookVerticle extends AbstractVerticle {
 		if(author != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
 				author.getLastName() != null && !author.getLastName().trim().isEmpty() &&
 				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
-			if (authors_.get(author.getId()) == null) {
-				author.setId(authors_.size() + 1L);
-				authors_.put(author.getId(), author);
-				firstNameAuthors_.put(author.getFirstName(), author);
-				lastNameAuthors_.put(author.getLastName(), author);
-			}			
+			jdbc_.getConnection(ar -> {
+				SQLConnection conn = ar.result();
+				insertAuthor(author, conn,
+                        (au) -> {
+                          context.response().setStatusCode(201).end(Json.encodePrettily(au));
+                          conn.close();
+                        });				
+			});			
 		}		
 	}
 	private void addBook(RoutingContext context) {
 		final Book book = Json.decodeValue(context.getBodyAsString(), Book.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
 		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() && 
-				book.getTitle() != null && !book.getTitle().trim().isEmpty() && 
-				isbnBooks_.get(book.getIsbn()) == null && titleBooks_.get(book.getTitle()) == null) {
-			Long author_id = book.getAuthorId();
-			if (authors_.get(author_id) == null) {
-//				author.setId(authors_.size() + 1L);
-//				authors_.put(author.getId(), author); FIXME
-//				firstNameAuthors_.put(author.getFirstName(), author);
-//				lastNameAuthors_.put(author.getLastName(), author);
-			}
-			book.setId(isbnBooks_.size() + 1L);
-			isbnBooks_.put(book.getIsbn(), book);
-			titleBooks_.put(book.getTitle(), book);
-//			authorBooks_.put(author, book);
-			context.response().setStatusCode(201).end(Json.encodePrettily(book));
+				book.getTitle() != null && !book.getTitle().trim().isEmpty()) {
+			jdbc_.getConnection(ar -> {
+				SQLConnection conn = ar.result();
+				insertBook(book, conn,
+                        (b) -> {
+                          context.response().setStatusCode(201).end(Json.encodePrettily(b));
+                          conn.close();
+                });				
+			});			
 		} else
 			context.response().setStatusCode(400).end();
 	}
@@ -290,53 +287,38 @@ public class BookVerticle extends AbstractVerticle {
 		final String stringId = context.request().getParam("id");
 		if (stringId != null && !stringId.trim().isEmpty() ) {
 			Long id = Long.parseLong(stringId);
-		    Author author = authors_.get(id);
 		    context.response().putHeader("content-type", "application/json; charset=utf-8");
-		    // Check if the author has any book in the library before deleting.
-		    if (author != null) {
-		    	for (Map.Entry<String, Book> book : isbnBooks_.entrySet()) {
-		    		if (book.getValue().getAuthorId() == id) {
-		    			context.response().setStatusCode(400).end();
-		    			return;
-		    		}
-		    	}
-		    	authors_.remove(id);
-		    	firstNameAuthors_.remove(author.getFirstName());
-		    	lastNameAuthors_.remove(author.getLastName());
-			    context.response().setStatusCode(200).end(Json.encodePrettily(author));
-		    } else
-		    	context.response().end();
+	    	jdbc_.getConnection(ar -> {
+	            SQLConnection connection = ar.result();
+	            connection.execute("DELETE FROM author WHERE id='" + id + "'",
+	                result -> {
+	                  context.response().setStatusCode(204).end();
+	                  connection.close();
+	                });
+	          });
 		} else
 			context.response().putHeader("content-type", "application/json; charset=utf-8").setStatusCode(400).end();
 	}
 	private void deleteBook(RoutingContext context) {
 		final String isbn = context.request().getParam("isbn");
 		if (isbn != null && !isbn.trim().isEmpty() ) {
-		    Book book = isbnBooks_.get(isbn);
-		    context.response().putHeader("content-type", "application/json; charset=utf-8")
-		    	.setStatusCode(book == null ? 400 : 200);
-		    if (book != null) {
-		    	isbnBooks_.remove(isbn);
-		    	titleBooks_.remove(book.getTitle());
-//		    	authorBooks_.remove(book.getAuthor()); FIXME
-			    context.response()
-			        .end(Json.encodePrettily(book));
-		    } else
-		    	context.response().end();
+	    	jdbc_.getConnection(ar -> {
+	            SQLConnection connection = ar.result();
+	            connection.execute("DELETE FROM book WHERE isbn='" + isbn + "'",
+	                result -> {
+	                  context.response().setStatusCode(204).end();
+	                  connection.close();
+	                });
+	          });
 		} else
-		    context.response().putHeader("content-type", "application/json; charset=utf-8")
-	    	.setStatusCode(400).end();			
+		    context.response().putHeader("content-type", "application/json; charset=utf-8").setStatusCode(400).end();			
 	}
 	private void updateAuthor(RoutingContext context) {
 		final Author author = Json.decodeValue(context.getBodyAsString(), Author.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
-	    Author toUpdate = authors_.get(author.getId());
-		if(author != null && toUpdate != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
+		if(author != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
 				author.getLastName() != null && !author.getLastName().trim().isEmpty() &&
 				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
-			authors_.replace(author.getId(), author);
-			firstNameAuthors_.replace(author.getFirstName(), author);
-			lastNameAuthors_.replace(author.getLastName(), author);
 			context.response().setStatusCode(200).end(Json.encodePrettily(author));
 		} else
 			context.response().setStatusCode(400).end();
@@ -344,21 +326,37 @@ public class BookVerticle extends AbstractVerticle {
 	private void updateBook(RoutingContext context) {
 		final Book book = Json.decodeValue(context.getBodyAsString(), Book.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
-		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty() && 
-				isbnBooks_.get(book.getIsbn()) != null) {
-			Book toUpdate = isbnBooks_.get(book.getIsbn());
-			Long author_id = book.getAuthorId();
-//			if (author != null && authors_.get(author_id) != null)
-//				toUpdate.setAuthor(authors_.get(author_id));
-			if (book.getTitle() != null && !book.getTitle().trim().isEmpty())
-				toUpdate.setTitle(book.getTitle());
-			toUpdate.setPageCount(book.getPageCount());
-			isbnBooks_.replace(book.getIsbn(), toUpdate);
-			titleBooks_.put(toUpdate.getTitle(), toUpdate);
+		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty()) {
 			context.response().setStatusCode(200).end(Json.encodePrettily(book));
 		} else
 			context.response().setStatusCode(400).end();
 	}
+	private void selectAuthor(String query, JsonArray params, SQLConnection connection, Handler<AsyncResult<Author>> resultHandler) 
+	{
+		connection.queryWithParams(query, params, ar -> {
+		      if (ar.failed()) {
+		        resultHandler.handle(Future.failedFuture("Item not found"));
+		      } else {
+		    	  if (ar.result().getNumRows() >= 1)
+		    		  resultHandler.handle(Future.succeededFuture(new Author(ar.result().getRows().get(0))));
+		    	  else
+		    		  resultHandler.handle(Future.failedFuture("Item not found"));
+		      }
+		});
+	}	
+	private void selectBook(String query, JsonArray params, SQLConnection connection, Handler<AsyncResult<Book>> resultHandler) 
+	{
+		connection.queryWithParams(query, params, ar -> {
+		      if (ar.failed()) {
+		        resultHandler.handle(Future.failedFuture("Item not found"));
+		      } else {
+		    	  if (ar.result().getNumRows() >= 1)
+		    		  resultHandler.handle(Future.succeededFuture(new Book(ar.result().getRows().get(0))));
+		    	  else
+		    		  resultHandler.handle(Future.failedFuture("Item not found"));
+		      }
+		});
+	}	
 	private void insertAuthor(Author author, SQLConnection connection, Handler<AsyncResult<Author>> next) 
 	{
 		String connectionString = config().getString("url");
