@@ -149,19 +149,25 @@ public class BookVerticle extends AbstractVerticle {
 			  int statusCode = ctx.statusCode();
 		      log.error("/api/v1/authors fails! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
-			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+			  ctx.response().setStatusCode(statusCode).end("Oops!");
 		    });
 		router_.get("/api/v1/books").handler(this::getAllBooks).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
 			  log.error("/api/v1/books fails! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
-			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+			  ctx.response().setStatusCode(statusCode).end("Oops!");
+		    });
+		router_.get("/api/v1/authors/:id").handler(this::getAuthor).failureHandler(ctx -> {
+			  int statusCode = ctx.statusCode();
+			  log.error("/api/v1/authors/:id fails! " + statusCode);			  
+			  // Status code will be 500 for the RuntimeException or 403 for the other failure
+			  ctx.response().setStatusCode(statusCode).end("Oops!");
 		    });
 		router_.get("/api/v1/books/:isbn").handler(this::getBook).failureHandler(ctx -> {
 			  int statusCode = ctx.statusCode();
 			  log.error("/api/v1/books/:isbn fails! " + statusCode);			  
 			  // Status code will be 500 for the RuntimeException or 403 for the other failure
-			  ctx.response().setStatusCode(statusCode).end("Oopsy Daisy!");
+			  ctx.response().setStatusCode(statusCode).end("Oops!");
 		    });
 		// Add handler to read the request’s body
 		router_.route("/api/v1/books*").handler(BodyHandler.create());
@@ -233,6 +239,28 @@ public class BookVerticle extends AbstractVerticle {
 				}
 			});
 		});		
+	}
+	private void getAuthor(RoutingContext context) {
+		final String id = context.request().getParam("id");
+	    context.response().putHeader("content-type", "application/json; charset=utf-8");	
+		if(id != null && !id.isEmpty()) {
+		jdbc_.getConnection(ar -> {
+			SQLConnection conn = ar.result();
+			String connectionString = config().getString("url");
+			String query = "SELECT * FROM author WHERE id=?";
+			if (connectionString.contains("hsqldb"))
+				query = "SELECT * FROM author WHERE \"id\"=?";
+			selectAuthor(query, new JsonArray().add(id), conn, result -> {
+		          if (result.succeeded())
+		        	  context.response().setStatusCode(200).end(Json.encodePrettily(result.result()));
+		          else {
+		        	  log.error("Failed to get author "+id+"! "+result.cause());
+		        	  context.response().setStatusCode(500).end();
+		          }
+		          conn.close();
+		        });			
+		});
+		}
 	}	
 	private void getBook(RoutingContext context) {
 		final String isbn = context.request().getParam("isbn");
@@ -241,11 +269,16 @@ public class BookVerticle extends AbstractVerticle {
 		jdbc_.getConnection(ar -> {
 			SQLConnection conn = ar.result();
 			String query = "SELECT * FROM book WHERE isbn=?";
+			String connectionString = config().getString("url");
+			if (connectionString.contains("hsqldb"))
+				query = "SELECT * FROM book WHERE \"isbn\"=?";
 			selectBook(query, new JsonArray().add(isbn), conn, result -> {
 		          if (result.succeeded())
 		        	  context.response().setStatusCode(200).end(Json.encodePrettily(result.result()));
-		          else
+		          else {
+		        	  log.error("Failed to get book "+isbn+"! "+result.cause());
 		        	  context.response().setStatusCode(500).end();
+		          }
 		          conn.close();
 		        });			
 		});
@@ -334,9 +367,9 @@ public class BookVerticle extends AbstractVerticle {
 	private void selectAuthor(String query, JsonArray params, SQLConnection connection, Handler<AsyncResult<Author>> resultHandler) 
 	{
 		connection.queryWithParams(query, params, ar -> {
-		      if (ar.failed()) {
-		        resultHandler.handle(Future.failedFuture("Item not found"));
-		      } else {
+		      if (ar.failed())
+		    	  resultHandler.handle(Future.failedFuture("Item not found"));
+		      else {
 		    	  if (ar.result().getNumRows() >= 1)
 		    		  resultHandler.handle(Future.succeededFuture(new Author(ar.result().getRows().get(0))));
 		    	  else
@@ -347,9 +380,9 @@ public class BookVerticle extends AbstractVerticle {
 	private void selectBook(String query, JsonArray params, SQLConnection connection, Handler<AsyncResult<Book>> resultHandler) 
 	{
 		connection.queryWithParams(query, params, ar -> {
-		      if (ar.failed()) {
-		        resultHandler.handle(Future.failedFuture("Item not found"));
-		      } else {
+		      if (ar.failed())
+		    	  resultHandler.handle(Future.failedFuture("Item not found"));
+		      else {
 		    	  if (ar.result().getNumRows() >= 1)
 		    		  resultHandler.handle(Future.succeededFuture(new Book(ar.result().getRows().get(0))));
 		    	  else

@@ -1,7 +1,8 @@
 package com.restapi.vertx.test;
-
+import com.restapi.vertx.models.*;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -56,9 +57,9 @@ public class BookVerticleTests {
 				  System.out.println("getAuthorsSuccessTest() fails! " + ar.cause().getMessage());
 			  assertTrue(ar.succeeded());
 		      // Obtain response
-		      HttpResponse<Buffer> response = ar.result();
-			  System.out.println("Status Code: " + response.statusCode());		      
+		      HttpResponse<Buffer> response = ar.result();	      
 		      assertEquals(200, response.statusCode());
+		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
 		      try {
 		    	  JSONArray authors = new JSONArray(response.body().toString());
 		    	  assertFalse(authors.length() == 0);
@@ -81,9 +82,9 @@ public class BookVerticleTests {
 				  System.out.println("getBooksSuccessTest() fails! " + ar.cause().getMessage());
 			  assertTrue(ar.succeeded());
 		      // Obtain response
-		      HttpResponse<Buffer> response = ar.result();
-			  System.out.println("Status Code: " + response.statusCode());		      
+		      HttpResponse<Buffer> response = ar.result();	      
 		      assertEquals(200, response.statusCode());
+		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
 		      try {
 		    	  JSONArray books = new JSONArray(response.body().toString());
 		    	  assertFalse(books.length() == 0);
@@ -96,5 +97,51 @@ public class BookVerticleTests {
 		    	  context.completeNow();
 		      }
 		  });		
+	}
+	@Test
+	public void getAuthorWithIDSuccessTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.get(port_, "localhost", "/api/v1/authors/0")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("getAuthorWithIDSuccessTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();	      
+		      assertEquals(200, response.statusCode());
+		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
+		      assertNotNull(response.body());
+		      assertFalse(response.body().toString().isEmpty());
+	    	  final Author author = Json.decodeValue(response.body().toString(), Author.class);
+	    	  assertNotNull(author);
+	    	  assertEquals("JK", author.getFirstName());
+	    	  assertEquals("Rowing", author.getLastName());
+	    	  assertEquals("jk.rowing@email.com", author.getEmail());
+	    	  assertEquals("+49123456789", author.getPhone());
+	    	  context.completeNow();
+		  });				
 	}	
+	@Test
+	public void getBookWithISBNSuccessTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.get(port_, "localhost", "/api/v1/books/123456789")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("getBookWithISBNSuccessTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();	      
+		      assertEquals(200, response.statusCode());
+		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
+		      assertNotNull(response.body());
+		      assertFalse(response.body().toString().isEmpty());
+	    	  final Book book = Json.decodeValue(response.body().toString(), Book.class);
+	    	  assertNotNull(book);
+	    	  assertEquals("123456789", book.getIsbn());
+	    	  assertEquals("Harry Porter", book.getTitle());
+	    	  assertEquals(123, book.getPageCount());
+	    	  assertEquals(0, book.getAuthorId());
+	    	  context.completeNow();
+		  });				
+	}
 }
