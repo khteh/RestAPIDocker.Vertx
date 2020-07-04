@@ -13,6 +13,7 @@ import io.vertx.config.*;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import java.io.IOException;
 import java.net.ServerSocket;
 import com.restapi.vertx.verticles.*;
@@ -27,6 +28,7 @@ import org.json.JSONException;
 import org.skyscreamer.jsonassert.*;
 //import org.junit.runner.RunWith;
 @ExtendWith(VertxExtension.class)
+@TestMethodOrder(OrderAnnotation.class)
 public class BookVerticleTests {
 	private static int port_;
 	@BeforeAll
@@ -49,6 +51,7 @@ public class BookVerticleTests {
 		}
 	}
 	@Test
+	@Order(1)    
 	public void getAuthorsSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
 		client.get(port_, "localhost", "/api/v1/authors")
@@ -77,6 +80,7 @@ public class BookVerticleTests {
 		  });		
 	}
 	@Test
+	@Order(2)
 	public void getBooksSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
 		client.get(port_, "localhost", "/api/v1/books")
@@ -105,6 +109,7 @@ public class BookVerticleTests {
 		  });		
 	}
 	@Test
+	@Order(3)
 	public void getAuthorWithIDSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
 		client.get(port_, "localhost", "/api/v1/authors/0")
@@ -122,12 +127,13 @@ public class BookVerticleTests {
 	    	  assertNotNull(author);
 	    	  assertEquals("JK", author.getFirstName());
 	    	  assertEquals("Rowing", author.getLastName());
-	    	  //assertEquals("jk.rowing@email.com", author.getEmail()); Clash with updateAuthorSuccessTest
-	    	  //assertEquals("+49123456789", author.getPhone()); Clash with updateAuthorSuccessTest
+	    	  assertEquals("jk.rowing@email.com", author.getEmail());
+	    	  assertEquals("+49123456789", author.getPhone());
 	    	  context.completeNow();
 		  });				
 	}	
 	@Test
+	@Order(4)
 	public void getBookWithISBNSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
 		client.get(port_, "localhost", "/api/v1/books/123456789")
@@ -145,12 +151,13 @@ public class BookVerticleTests {
 	    	  assertNotNull(book);
 	    	  assertEquals("123456789", book.getIsbn());
 	    	  assertEquals("Harry Porter", book.getTitle());
-	    	  //assertEquals(123, book.getPageCount()); Clash with updateBookSuccessTest
-	    	  //assertEquals(0, book.getAuthorId()); Clash with updateBookSuccessTest
+	    	  assertEquals(123, book.getPageCount());
+	    	  assertEquals(0, book.getAuthorId());
 	    	  context.completeNow();
 		  });				
 	}
 	@Test
+	@Order(5)
 	public void updateAuthorSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
 		final String json = Json.encodePrettily(new Author("JK", "Rowing", "jk.rowing@gmail.com", "+4998765432"));
@@ -176,6 +183,7 @@ public class BookVerticleTests {
 			});
 	}
 	@Test
+	@Order(6)
 	public void updateBookSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
 		final String json = Json.encodePrettily(new Book("Harry Porter", "123456789", 456, 1L));
@@ -199,5 +207,35 @@ public class BookVerticleTests {
 		    	  assertEquals(1, updated.getAuthorId());
 		    	  context.completeNow();				
 			});
+	}
+	@Test
+	@Order(7)
+	public void deleteBookSuccessTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.delete(port_, "localhost", "/api/v1/books/123456789")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("deleteBookSuccessTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();	      
+		      assertEquals(204, response.statusCode());
+		      context.completeNow();
+		  });		
+	}
+	@Test
+	@Order(8)
+	public void deleteAuthorSuccessTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.delete(port_, "localhost", "/api/v1/authors/0")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("deleteAuthorSuccessTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();	      
+		      assertEquals(204, response.statusCode());
+		      context.completeNow();
+		  });		
 	}	
 }
