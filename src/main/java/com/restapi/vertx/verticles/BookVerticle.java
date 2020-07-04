@@ -323,7 +323,11 @@ public class BookVerticle extends AbstractVerticle {
 		    context.response().putHeader("content-type", "application/json; charset=utf-8");
 	    	jdbc_.getConnection(ar -> {
 	            SQLConnection connection = ar.result();
-	            connection.execute("DELETE FROM author WHERE id='" + id + "'",
+	            String query = "DELETE FROM author WHERE id='" + id + "'";
+				String connectionString = config().getString("url");
+				if (connectionString.contains("hsqldb"))
+					query = "DELETE FROM author WHERE \"id\"='" + id + "'";
+	            connection.execute(query,
 	                result -> {
 	                  context.response().setStatusCode(204).end();
 	                  connection.close();
@@ -337,7 +341,11 @@ public class BookVerticle extends AbstractVerticle {
 		if (isbn != null && !isbn.trim().isEmpty() ) {
 	    	jdbc_.getConnection(ar -> {
 	            SQLConnection connection = ar.result();
-	            connection.execute("DELETE FROM book WHERE isbn='" + isbn + "'",
+	            String query = "DELETE FROM book WHERE isbn='" + isbn + "'";
+				String connectionString = config().getString("url");
+				if (connectionString.contains("hsqldb"))
+					query = "DELETE FROM book WHERE \"isbn\"='" + isbn + "'";	            
+	            connection.execute(query,
 	                result -> {
 	                  context.response().setStatusCode(204).end();
 	                  connection.close();
@@ -347,20 +355,62 @@ public class BookVerticle extends AbstractVerticle {
 		    context.response().putHeader("content-type", "application/json; charset=utf-8").setStatusCode(400).end();			
 	}
 	private void updateAuthor(RoutingContext context) {
+		final String id = context.request().getParam("id");
 		final Author author = Json.decodeValue(context.getBodyAsString(), Author.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
 		if(author != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
 				author.getLastName() != null && !author.getLastName().trim().isEmpty() &&
 				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
-			context.response().setStatusCode(200).end(Json.encodePrettily(author));
+			String sql = "UPDATE author SET first_name=?, last_name=?, email=?, phone=? WHERE id=?";			
+			String connectionString = config().getString("url");
+			if (connectionString.contains("hsqldb"))
+				sql = "UPDATE author SET \"first_name\"=?, \"last_name\"=?, \"email\"=?, \"phone\"=? WHERE \"id\"=?";
+            final String query = sql;			
+	    	jdbc_.getConnection(ar -> {
+	            SQLConnection connection = ar.result();
+			    connection.updateWithParams(query,
+			        new JsonArray().add(author.getFirstName()).add(author.getLastName()).add(author.getEmail()).add(author.getPhone()).add(id),
+			        update -> {
+			          if (update.failed()) {
+			            context.response().setStatusCode(500).end("Cannot update the author!");
+			            return;
+			          }
+			          if (update.result().getUpdated() == 0) {
+			        	  context.response().setStatusCode(400).end("Author "+id+" not found!");
+			        	  return;
+			          }
+			          context.response().setStatusCode(200).end(Json.encodePrettily(author));
+				});
+	    	});
 		} else
 			context.response().setStatusCode(400).end();
 	}	
 	private void updateBook(RoutingContext context) {
+		final String isbn = context.request().getParam("isbn");
 		final Book book = Json.decodeValue(context.getBodyAsString(), Book.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
 		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty()) {
-			context.response().setStatusCode(200).end(Json.encodePrettily(book));
+			String sql = "UPDATE book SET title=?, page_count=?, author_id=? WHERE isbn=?";			
+			String connectionString = config().getString("url");
+			if (connectionString.contains("hsqldb"))
+				sql = "UPDATE book SET \"title\"=?, \"page_count\"=?, \"author_id\"=? WHERE \"isbn\"=?";
+            final String query = sql;			
+	    	jdbc_.getConnection(ar -> {
+	            SQLConnection connection = ar.result();
+			    connection.updateWithParams(query,
+			        new JsonArray().add(book.getTitle()).add(book.getPageCount()).add(book.getAuthorId()).add(isbn),
+			        update -> {
+			          if (update.failed()) {
+			            context.response().setStatusCode(500).end("Cannot update the book!");
+			            return;
+			          }
+			          if (update.result().getUpdated() == 0) {
+			        	  context.response().setStatusCode(400).end("Book "+isbn+" not found!");
+			        	  return;
+			          }
+			          context.response().setStatusCode(200).end(Json.encodePrettily(book));
+				});
+	    	});
 		} else
 			context.response().setStatusCode(400).end();
 	}
