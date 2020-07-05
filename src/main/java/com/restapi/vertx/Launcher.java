@@ -28,11 +28,11 @@ public class Launcher extends AbstractVerticle {
 		retriever.getConfig(json -> {
 			JsonObject config = json.result();
 			DeploymentOptions options = new DeploymentOptions().setConfig(config);
-			vertx.deployVerticle(BookVerticle.class.getName(), options, result -> {
+			vertx.deployVerticle(LibraryVerticle.class.getName(), options, result -> {
 				if (result.succeeded())
-					log.info("Successfully launched "+BookVerticle.class.getName() + " id: " + result.result());
+					log.info("Successfully launched "+LibraryVerticle.class.getName() + " id: " + result.result());
 				else
-					log.error("Failed to launch "+ BookVerticle.class.getName() + " " + result);
+					log.error("Failed to launch "+ LibraryVerticle.class.getName() + " " + result);
 			});			
 		});
 	}

@@ -29,7 +29,7 @@ import org.skyscreamer.jsonassert.*;
 //import org.junit.runner.RunWith;
 @ExtendWith(VertxExtension.class)
 @TestMethodOrder(OrderAnnotation.class)
-public class BookVerticleTests {
+public class LibraryVerticleTests {
 	private static int port_;
 	@BeforeAll
 	public static void setup(Vertx vertx, VertxTestContext context) throws IOException {
@@ -44,7 +44,7 @@ public class BookVerticleTests {
 				JsonObject config = json.result();
 				port_ = config.getInteger("port");
 				DeploymentOptions options = new DeploymentOptions().setConfig(config);
-				vertx.deployVerticle(BookVerticle.class.getName(), options, context.completing());
+				vertx.deployVerticle(LibraryVerticle.class.getName(), options, context.completing());
 			});			
 		} catch (Exception e) {
 			System.out.println("Setup exception!" + e.toString());
@@ -131,7 +131,26 @@ public class BookVerticleTests {
 	    	  assertEquals("+49123456789", author.getPhone());
 	    	  context.completeNow();
 		  });				
-	}	
+	}
+	@Test
+	@Order(3)
+	public void getAuthorWithIDFailTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.get(port_, "localhost", "/api/v1/authors/123")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("getAuthorWithIDFailTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();	      
+		      assertEquals(400, response.statusCode());
+		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
+		      assertNotNull(response.body());
+		      assertFalse(response.body().toString().isEmpty());
+		      assertEquals("Invalid request! id: "+123, response.body().toString());
+	    	  context.completeNow();
+		  });				
+	}		
 	@Test
 	@Order(4)
 	public void getBookWithISBNSuccessTest(Vertx vertx, VertxTestContext context) {
@@ -156,6 +175,25 @@ public class BookVerticleTests {
 	    	  context.completeNow();
 		  });				
 	}
+	@Test
+	@Order(4)
+	public void getBookWithISBNFailTest(Vertx vertx, VertxTestContext context) {
+		WebClient client = WebClient.create(vertx);
+		client.get(port_, "localhost", "/api/v1/books/12345")
+		  .send(ar -> {
+			  if (!ar.succeeded())
+				  System.out.println("getBookWithISBNFailTest() fails! " + ar.cause().getMessage());
+			  assertTrue(ar.succeeded());
+		      // Obtain response
+		      HttpResponse<Buffer> response = ar.result();	      
+		      assertEquals(400, response.statusCode());
+		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
+		      assertNotNull(response.body());
+		      assertFalse(response.body().toString().isEmpty());
+		      assertEquals("Invalid request! isbn: 12345", response.body().toString());
+		      context.completeNow();
+		  });				
+	}	
 	@Test
 	@Order(5)
 	public void updateAuthorSuccessTest(Vertx vertx, VertxTestContext context) {

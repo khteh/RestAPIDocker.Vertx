@@ -24,8 +24,8 @@ import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-public class BookVerticle extends AbstractVerticle {
-	private static final Log log = LogFactory.getLog(BookVerticle.class);
+public class LibraryVerticle extends AbstractVerticle {
+	private static final Log log = LogFactory.getLog(LibraryVerticle.class);
 	private JDBCClient jdbc_;
 	// Store our product
 	// LinkedHashMap maintains insertion order
@@ -47,21 +47,8 @@ public class BookVerticle extends AbstractVerticle {
 			SQLConnection connection = conn.result();
 			// Populate the DB using the connection
 			log.info("populateDatabase() Create author table if not exists...");
-			String connectionString = config().getString("url");
-			String strCreateAuthor = "", strCreateBook = "";
-			if (connectionString.contains("h2")) {
-				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (\"id\" INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, \"first_name\" varchar(255), \"last_name\" varchar(255), \"email\" varchar(255), \"phone\" varchar(255))";
-				strCreateBook = "CREATE TABLE IF NOT EXISTS book (\"id\" INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, \"title\" varchar(255), \"isbn\" varchar(255), \"page_count\" INTEGER, \"author_id\" INTEGER)";
-			} else if (connectionString.contains("mysql")) {
-				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name varchar(255), last_name varchar(255), email varchar(255), phone varchar(255))";
-				strCreateBook = "CREATE TABLE IF NOT EXISTS book (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255), isbn varchar(255), page_count INTEGER, author_id INTEGER)";				
-			} else {
-				log.error("Invalid DB configuration! " + connectionString);
-				fut.fail("Invalid DB configuration! " + connectionString);
-				connection.close();
-				return;
-			}
-			final String sqlCreateAuthor = strCreateAuthor, sqlCreateBook = strCreateBook;
+			final String sqlCreateAuthor = "CREATE TABLE IF NOT EXISTS author (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name varchar(255), last_name varchar(255), email varchar(255), phone varchar(255))";
+			final String sqlCreateBook = "CREATE TABLE IF NOT EXISTS book (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255), isbn varchar(255), page_count INTEGER, author_id INTEGER)";				
 			connection.execute(sqlCreateAuthor,
 		              ar -> {
 		                if (ar.failed()) {
@@ -246,16 +233,15 @@ public class BookVerticle extends AbstractVerticle {
 		if(id != null && !id.isEmpty()) {
 		jdbc_.getConnection(ar -> {
 			SQLConnection conn = ar.result();
-			String connectionString = config().getString("url");
-			String query = "SELECT * FROM author WHERE id=?";
-			if (connectionString.contains("h2"))
-				query = "SELECT * FROM author WHERE \"id\"=?";
-			selectAuthor(query, new JsonArray().add(id), conn, result -> {
+			selectAuthor("SELECT * FROM author WHERE id=?", new JsonArray().add(id), conn, result -> {
 		          if (result.succeeded())
 		        	  context.response().setStatusCode(200).end(Json.encodePrettily(result.result()));
-		          else {
+		          else if (result.cause().toString().contains("Item not found")) {
+		        	  log.error("Invalid request! id: "+id);
+		        	  context.response().setStatusCode(400).end("Invalid request! id: "+id);
+		          } else {
 		        	  log.error("Failed to get author "+id+"! "+result.cause());
-		        	  context.response().setStatusCode(500).end();
+		        	  context.response().setStatusCode(500).end(result.cause().toString());		        	  
 		          }
 		          conn.close();
 		        });			
@@ -268,16 +254,15 @@ public class BookVerticle extends AbstractVerticle {
 		if(isbn != null && !isbn.isEmpty()) {
 		jdbc_.getConnection(ar -> {
 			SQLConnection conn = ar.result();
-			String query = "SELECT * FROM book WHERE isbn=?";
-			String connectionString = config().getString("url");
-			if (connectionString.contains("h2"))
-				query = "SELECT * FROM book WHERE \"isbn\"=?";
-			selectBook(query, new JsonArray().add(isbn), conn, result -> {
+			selectBook("SELECT * FROM book WHERE isbn=?", new JsonArray().add(isbn), conn, result -> {
 		          if (result.succeeded())
 		        	  context.response().setStatusCode(200).end(Json.encodePrettily(result.result()));
-		          else {
+		          else if (result.cause().toString().contains("Item not found")) {
+		        	  log.error("Invalid request! isbn: "+isbn);
+		        	  context.response().setStatusCode(400).end("Invalid request! isbn: "+isbn);
+		          } else {
 		        	  log.error("Failed to get book "+isbn+"! "+result.cause());
-		        	  context.response().setStatusCode(500).end();
+		        	  context.response().setStatusCode(500).end(result.cause().toString());		        	  
 		          }
 		          conn.close();
 		        });			
@@ -323,11 +308,7 @@ public class BookVerticle extends AbstractVerticle {
 		    context.response().putHeader("content-type", "application/json; charset=utf-8");
 	    	jdbc_.getConnection(ar -> {
 	            SQLConnection connection = ar.result();
-	            String query = "DELETE FROM author WHERE id='" + id + "'";
-				String connectionString = config().getString("url");
-				if (connectionString.contains("h2"))
-					query = "DELETE FROM author WHERE \"id\"='" + id + "'";
-	            connection.execute(query,
+	            connection.execute("DELETE FROM author WHERE id='" + id + "'",
 	                result -> {
 	                  context.response().setStatusCode(204).end();
 	                  connection.close();
@@ -341,11 +322,7 @@ public class BookVerticle extends AbstractVerticle {
 		if (isbn != null && !isbn.trim().isEmpty() ) {
 	    	jdbc_.getConnection(ar -> {
 	            SQLConnection connection = ar.result();
-	            String query = "DELETE FROM book WHERE isbn='" + isbn + "'";
-				String connectionString = config().getString("url");
-				if (connectionString.contains("h2"))
-					query = "DELETE FROM book WHERE \"isbn\"='" + isbn + "'";	            
-	            connection.execute(query,
+	            connection.execute("DELETE FROM book WHERE isbn='" + isbn + "'",
 	                result -> {
 	                  context.response().setStatusCode(204).end();
 	                  connection.close();
@@ -361,14 +338,9 @@ public class BookVerticle extends AbstractVerticle {
 		if(author != null && author.getFirstName() != null && !author.getFirstName().trim().isEmpty() && 
 				author.getLastName() != null && !author.getLastName().trim().isEmpty() &&
 				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
-			String sql = "UPDATE author SET first_name=?, last_name=?, email=?, phone=? WHERE id=?";			
-			String connectionString = config().getString("url");
-			if (connectionString.contains("h2"))
-				sql = "UPDATE author SET \"first_name\"=?, \"last_name\"=?, \"email\"=?, \"phone\"=? WHERE \"id\"=?";
-            final String query = sql;			
 	    	jdbc_.getConnection(ar -> {
 	            SQLConnection connection = ar.result();
-			    connection.updateWithParams(query,
+			    connection.updateWithParams("UPDATE author SET first_name=?, last_name=?, email=?, phone=? WHERE id=?",
 			        new JsonArray().add(author.getFirstName()).add(author.getLastName()).add(author.getEmail()).add(author.getPhone()).add(id),
 			        update -> {
 			          if (update.failed()) {
@@ -389,15 +361,10 @@ public class BookVerticle extends AbstractVerticle {
 		final String isbn = context.request().getParam("isbn");
 		final Book book = Json.decodeValue(context.getBodyAsString(), Book.class);
 	    context.response().putHeader("content-type", "application/json; charset=utf-8");
-		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty()) {
-			String sql = "UPDATE book SET title=?, page_count=?, author_id=? WHERE isbn=?";			
-			String connectionString = config().getString("url");
-			if (connectionString.contains("h2"))
-				sql = "UPDATE book SET \"title\"=?, \"page_count\"=?, \"author_id\"=? WHERE \"isbn\"=?";
-            final String query = sql;			
+		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty()) {		
 	    	jdbc_.getConnection(ar -> {
 	            SQLConnection connection = ar.result();
-			    connection.updateWithParams(query,
+			    connection.updateWithParams("UPDATE book SET title=?, page_count=?, author_id=? WHERE isbn=?",
 			        new JsonArray().add(book.getTitle()).add(book.getPageCount()).add(book.getAuthorId()).add(isbn),
 			        update -> {
 			          if (update.failed()) {
@@ -418,7 +385,7 @@ public class BookVerticle extends AbstractVerticle {
 	{
 		connection.queryWithParams(query, params, ar -> {
 		      if (ar.failed())
-		    	  resultHandler.handle(Future.failedFuture("Item not found"));
+		    	  resultHandler.handle(Future.failedFuture(ar.cause()));
 		      else {
 		    	  if (ar.result().getNumRows() >= 1)
 		    		  resultHandler.handle(Future.succeededFuture(new Author(ar.result().getRows().get(0))));
@@ -431,7 +398,7 @@ public class BookVerticle extends AbstractVerticle {
 	{
 		connection.queryWithParams(query, params, ar -> {
 		      if (ar.failed())
-		    	  resultHandler.handle(Future.failedFuture("Item not found"));
+		    	  resultHandler.handle(Future.failedFuture(ar.cause()));
 		      else {
 		    	  if (ar.result().getNumRows() >= 1)
 		    		  resultHandler.handle(Future.succeededFuture(new Book(ar.result().getRows().get(0))));
@@ -442,19 +409,7 @@ public class BookVerticle extends AbstractVerticle {
 	}	
 	private void insertAuthor(Author author, SQLConnection connection, Handler<AsyncResult<Author>> next) 
 	{
-		String connectionString = config().getString("url");
-		String str = "";
-		if (connectionString.contains("h2"))
-			str = "INSERT INTO author (\"first_name\", \"last_name\", \"email\", \"phone\") VALUES (?, ?, ?, ?)";
-		else if (connectionString.contains("mysql"))
-			str = "INSERT INTO author (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)";			
-		else {
-			log.error("Invalid DB configuration! " + connectionString);
-			next.handle(Future.failedFuture("Invalid DB configuration! " + connectionString));
-			return;
-		}		
-		final String sql = str; 
-		connection.updateWithParams(sql,
+		connection.updateWithParams("INSERT INTO author (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)",
 			new JsonArray().add(author.getFirstName()).add(author.getLastName()).add(author.getEmail()).add(author.getPhone()),
 		      (ar) -> {
 		        if (ar.failed()) {
@@ -470,19 +425,7 @@ public class BookVerticle extends AbstractVerticle {
 	}
 	private void insertBook(Book book, SQLConnection connection, Handler<AsyncResult<Book>> next) 
 	{
-		String connectionString = config().getString("url");
-		String str = "";
-		if (connectionString.contains("h2"))
-			str = "INSERT INTO book (\"title\", \"isbn\", \"page_count\", \"author_id\") VALUES (?, ?, ?, ?)";
-		else if (connectionString.contains("mysql"))
-			str = "INSERT INTO book (title, isbn, page_count, author_id) VALUES (?, ?, ?, ?)";			
-		else {
-			log.error("Invalid DB configuration! " + connectionString);
-			next.handle(Future.failedFuture("Invalid DB configuration! " + connectionString));
-			return;
-		}		
-		final String sql = str; 		
-		connection.updateWithParams(sql,
+		connection.updateWithParams("INSERT INTO book (title, isbn, page_count, author_id) VALUES (?, ?, ?, ?)",
 			new JsonArray().add(book.getTitle()).add(book.getIsbn()).add(book.getPageCount()).add(book.getAuthorId()),
 		      (ar) -> {
 		        if (ar.failed()) {
