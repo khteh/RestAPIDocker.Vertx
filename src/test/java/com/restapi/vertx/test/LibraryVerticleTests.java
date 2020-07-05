@@ -147,7 +147,7 @@ public class LibraryVerticleTests {
 		      assertEquals("application/json; charset=utf-8", response.headers().get("content-type"));
 		      assertNotNull(response.body());
 		      assertFalse(response.body().toString().isEmpty());
-		      assertEquals("Invalid request! id: "+123, response.body().toString());
+		      assertEquals("Invalid request! id: 123", response.body().toString());
 	    	  context.completeNow();
 		  });				
 	}		
