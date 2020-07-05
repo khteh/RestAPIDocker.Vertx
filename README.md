@@ -5,7 +5,8 @@
 # Build
 
 ## Database
-* Import "Book" database from src/main/resources/db folder
+* `CREATE DATABASE `library` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;`
+* Import "Library" database tables from src/main/resources/db folder
 
 ## To build Vertx-deployable JAR application and docker image:
 ```mvn clean package```
