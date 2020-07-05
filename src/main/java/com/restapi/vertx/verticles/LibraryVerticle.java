@@ -47,9 +47,7 @@ public class LibraryVerticle extends AbstractVerticle {
 			SQLConnection connection = conn.result();
 			// Populate the DB using the connection
 			log.info("populateDatabase() Create author table if not exists...");
-			final String sqlCreateAuthor = "CREATE TABLE IF NOT EXISTS author (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name varchar(255), last_name varchar(255), email varchar(255), phone varchar(255))";
-			final String sqlCreateBook = "CREATE TABLE IF NOT EXISTS book (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255), isbn varchar(255), page_count INTEGER, author_id INTEGER)";				
-			connection.execute(sqlCreateAuthor,
+			connection.execute("CREATE TABLE IF NOT EXISTS author (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name varchar(255), last_name varchar(255), email varchar(255), phone varchar(255))",
 		              ar -> {
 		                if (ar.failed()) {
 		                	log.error("Create author table if not exists failed! " + ar.cause());
@@ -58,7 +56,7 @@ public class LibraryVerticle extends AbstractVerticle {
 		                  return;
 		                }
 		        log.info("populateDatabase() Create book table if not exists...");
-		        connection.execute(sqlCreateBook,
+		        connection.execute("CREATE TABLE IF NOT EXISTS book (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255), isbn varchar(255), page_count INTEGER, author_id INTEGER)",
 		  		       ar1 -> {
 		  		       	if (ar1.failed()) {
 		  		       		log.error("Create book table if not exists failed! " + ar1.cause());
