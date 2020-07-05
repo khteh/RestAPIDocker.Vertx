@@ -49,9 +49,9 @@ public class BookVerticle extends AbstractVerticle {
 			log.info("populateDatabase() Create author table if not exists...");
 			String connectionString = config().getString("url");
 			String strCreateAuthor = "", strCreateBook = "";
-			if (connectionString.contains("hsqldb")) {
-				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (\"id\" INTEGER IDENTITY PRIMARY KEY, \"first_name\" varchar(255), \"last_name\" varchar(255), \"email\" varchar(255), \"phone\" varchar(255))";
-				strCreateBook = "CREATE TABLE IF NOT EXISTS book (\"id\" INTEGER IDENTITY PRIMARY KEY, \"title\" varchar(255), \"isbn\" varchar(255), \"page_count\" INTEGER, \"author_id\" INTEGER)";
+			if (connectionString.contains("h2")) {
+				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (\"id\" INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, \"first_name\" varchar(255), \"last_name\" varchar(255), \"email\" varchar(255), \"phone\" varchar(255))";
+				strCreateBook = "CREATE TABLE IF NOT EXISTS book (\"id\" INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, \"title\" varchar(255), \"isbn\" varchar(255), \"page_count\" INTEGER, \"author_id\" INTEGER)";
 			} else if (connectionString.contains("mysql")) {
 				strCreateAuthor = "CREATE TABLE IF NOT EXISTS author (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, first_name varchar(255), last_name varchar(255), email varchar(255), phone varchar(255))";
 				strCreateBook = "CREATE TABLE IF NOT EXISTS book (id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, title varchar(255), isbn varchar(255), page_count INTEGER, author_id INTEGER)";				
@@ -248,7 +248,7 @@ public class BookVerticle extends AbstractVerticle {
 			SQLConnection conn = ar.result();
 			String connectionString = config().getString("url");
 			String query = "SELECT * FROM author WHERE id=?";
-			if (connectionString.contains("hsqldb"))
+			if (connectionString.contains("h2"))
 				query = "SELECT * FROM author WHERE \"id\"=?";
 			selectAuthor(query, new JsonArray().add(id), conn, result -> {
 		          if (result.succeeded())
@@ -270,7 +270,7 @@ public class BookVerticle extends AbstractVerticle {
 			SQLConnection conn = ar.result();
 			String query = "SELECT * FROM book WHERE isbn=?";
 			String connectionString = config().getString("url");
-			if (connectionString.contains("hsqldb"))
+			if (connectionString.contains("h2"))
 				query = "SELECT * FROM book WHERE \"isbn\"=?";
 			selectBook(query, new JsonArray().add(isbn), conn, result -> {
 		          if (result.succeeded())
@@ -325,7 +325,7 @@ public class BookVerticle extends AbstractVerticle {
 	            SQLConnection connection = ar.result();
 	            String query = "DELETE FROM author WHERE id='" + id + "'";
 				String connectionString = config().getString("url");
-				if (connectionString.contains("hsqldb"))
+				if (connectionString.contains("h2"))
 					query = "DELETE FROM author WHERE \"id\"='" + id + "'";
 	            connection.execute(query,
 	                result -> {
@@ -343,7 +343,7 @@ public class BookVerticle extends AbstractVerticle {
 	            SQLConnection connection = ar.result();
 	            String query = "DELETE FROM book WHERE isbn='" + isbn + "'";
 				String connectionString = config().getString("url");
-				if (connectionString.contains("hsqldb"))
+				if (connectionString.contains("h2"))
 					query = "DELETE FROM book WHERE \"isbn\"='" + isbn + "'";	            
 	            connection.execute(query,
 	                result -> {
@@ -363,7 +363,7 @@ public class BookVerticle extends AbstractVerticle {
 				author.getEmail() != null && !author.getEmail().trim().isEmpty()) {
 			String sql = "UPDATE author SET first_name=?, last_name=?, email=?, phone=? WHERE id=?";			
 			String connectionString = config().getString("url");
-			if (connectionString.contains("hsqldb"))
+			if (connectionString.contains("h2"))
 				sql = "UPDATE author SET \"first_name\"=?, \"last_name\"=?, \"email\"=?, \"phone\"=? WHERE \"id\"=?";
             final String query = sql;			
 	    	jdbc_.getConnection(ar -> {
@@ -392,7 +392,7 @@ public class BookVerticle extends AbstractVerticle {
 		if(book != null && book.getIsbn() != null && !book.getIsbn().trim().isEmpty()) {
 			String sql = "UPDATE book SET title=?, page_count=?, author_id=? WHERE isbn=?";			
 			String connectionString = config().getString("url");
-			if (connectionString.contains("hsqldb"))
+			if (connectionString.contains("h2"))
 				sql = "UPDATE book SET \"title\"=?, \"page_count\"=?, \"author_id\"=? WHERE \"isbn\"=?";
             final String query = sql;			
 	    	jdbc_.getConnection(ar -> {
@@ -443,8 +443,8 @@ public class BookVerticle extends AbstractVerticle {
 	private void insertAuthor(Author author, SQLConnection connection, Handler<AsyncResult<Author>> next) 
 	{
 		String connectionString = config().getString("url");
-		String str = "", strCreateBook = "";
-		if (connectionString.contains("hsqldb"))
+		String str = "";
+		if (connectionString.contains("h2"))
 			str = "INSERT INTO author (\"first_name\", \"last_name\", \"email\", \"phone\") VALUES (?, ?, ?, ?)";
 		else if (connectionString.contains("mysql"))
 			str = "INSERT INTO author (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)";			
@@ -471,8 +471,8 @@ public class BookVerticle extends AbstractVerticle {
 	private void insertBook(Book book, SQLConnection connection, Handler<AsyncResult<Book>> next) 
 	{
 		String connectionString = config().getString("url");
-		String str = "", strCreateBook = "";
-		if (connectionString.contains("hsqldb"))
+		String str = "";
+		if (connectionString.contains("h2"))
 			str = "INSERT INTO book (\"title\", \"isbn\", \"page_count\", \"author_id\") VALUES (?, ?, ?, ?)";
 		else if (connectionString.contains("mysql"))
 			str = "INSERT INTO book (title, isbn, page_count, author_id) VALUES (?, ?, ?, ?)";			

@@ -112,7 +112,7 @@ public class BookVerticleTests {
 	@Order(3)
 	public void getAuthorWithIDSuccessTest(Vertx vertx, VertxTestContext context) {
 		WebClient client = WebClient.create(vertx);
-		client.get(port_, "localhost", "/api/v1/authors/0")
+		client.get(port_, "localhost", "/api/v1/authors/1")
 		  .send(ar -> {
 			  if (!ar.succeeded())
 				  System.out.println("getAuthorWithIDSuccessTest() fails! " + ar.cause().getMessage());
@@ -152,7 +152,7 @@ public class BookVerticleTests {
 	    	  assertEquals("123456789", book.getIsbn());
 	    	  assertEquals("Harry Porter", book.getTitle());
 	    	  assertEquals(123, book.getPageCount());
-	    	  assertEquals(0, book.getAuthorId());
+	    	  assertEquals(1, book.getAuthorId());
 	    	  context.completeNow();
 		  });				
 	}
@@ -162,7 +162,7 @@ public class BookVerticleTests {
 		WebClient client = WebClient.create(vertx);
 		final String json = Json.encodePrettily(new Author("JK", "Rowing", "jk.rowing@gmail.com", "+4998765432"));
 		JsonObject author = new JsonObject(json);
-		client.put(port_, "localhost", "/api/v1/authors/0")
+		client.put(port_, "localhost", "/api/v1/authors/1")
 			.sendJson(author, ar -> {
 				  if (!ar.succeeded())
 					  System.out.println("getAuthorWithIDSuccessTest() fails! " + ar.cause().getMessage());
