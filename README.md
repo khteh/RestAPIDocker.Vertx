@@ -1,4 +1,4 @@
-# RestAPI with Java Vertx3, MySQL 8.0.20, Asynchronous SQL Client and Docker
+# Asynchronous RestAPI with Java Vertx3, MySQL 8.0.20, Asynchronous SQL Client and Docker
 * 1 verticle:
   - Library
 
