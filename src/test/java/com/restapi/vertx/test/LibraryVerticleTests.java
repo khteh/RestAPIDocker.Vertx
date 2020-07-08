@@ -37,7 +37,7 @@ public class LibraryVerticleTests {
 			ConfigStoreOptions fileStore = new ConfigStoreOptions()
 					.setType("file")
 					.setFormat("json")
-					.setConfig(new JsonObject().put("path", "src/main/config/vertx-test.json"));
+					.setConfig(new JsonObject().put("path", "src/test/config/vertx.json"));
 			ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);		
 			ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
 			retriever.getConfig(json -> {
