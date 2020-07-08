@@ -163,7 +163,7 @@ public class LibraryVerticle extends AbstractVerticle {
 		router_.post("/api/v1/books").handler(this::addBook);		
 		router_.put("/api/v1/books/:isbn").handler(this::updateBook);
 		router_.delete("/api/v1/books/:isbn").handler(this::deleteBook);
-		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("port"), next::handle);				
+		vertx.createHttpServer().requestHandler(router_).listen(config().getInteger("http.port"), next::handle);				
 	}
 	private void completeStartUp(AsyncResult<HttpServer> http, Future<Void> fut) {
 		if (http.succeeded()) {

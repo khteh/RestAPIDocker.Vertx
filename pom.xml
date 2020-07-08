@@ -107,6 +107,12 @@
 		</dependency>
   	</dependencies>
 	<build>
+		<testResources>
+		  <testResource>
+		    <directory>src/test/config</directory>
+		    <filtering>true</filtering>
+		  </testResource>
+		</testResources>	
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -139,16 +145,46 @@
 			<plugin>
 	            <groupId>org.apache.maven.plugins</groupId>
 	            <artifactId>maven-surefire-plugin</artifactId>
-	            <version>3.0.0-M4</version>
+	            <version>3.0.0-M5</version>
 	            <configuration>
 	            	<argLine>--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED -Dio.netty.tryReflectionSetAccessible=true</argLine>
+					<systemPropertyVariables>
+						<http.port>${http.port}</http.port>
+					</systemPropertyVariables>	            	
 	            </configuration>
 	        </plugin>
 	        <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>3.0.0-M4</version>
+                <version>3.0.0-M5</version>
+				  <executions>
+				    <execution>
+				      <goals>
+				        <goal>integration-test</goal>
+				        <goal>verify</goal>
+				      </goals>
+				    </execution>
+				</executions>                
             </plugin>
+			<plugin>
+			    <groupId>org.codehaus.mojo</groupId>
+			    <artifactId>build-helper-maven-plugin</artifactId>
+			    <version>3.2.0</version>
+				<executions>
+				    <execution>
+				      <id>reserve-network-port</id>
+				      <goals>
+				        <goal>reserve-network-port</goal>
+				      </goals>
+				      <phase>process-sources</phase>
+					  <configuration>
+						<portNames>
+					    	<portName>http.port</portName>
+					    </portNames>
+					  </configuration>			    				      
+					</execution>
+				</executions>			    
+			</plugin>            
 		</plugins>
 	</build>
 </project>

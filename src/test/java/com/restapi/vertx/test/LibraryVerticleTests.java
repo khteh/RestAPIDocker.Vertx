@@ -34,20 +34,27 @@ public class LibraryVerticleTests {
 	@BeforeAll
 	public static void setup(Vertx vertx, VertxTestContext context) throws IOException {
 		try {
+			port_ = Integer.parseInt(System.getProperty("http.port", "8080"));
+			System.out.println("setup() port: "+port_);
+			/* 
+			 * When Maven processes resources specified in project.build.testResources element, 
+			 * it will replace ${http.port} by the selected port provided by build-helper-maven-plugin
+			 * and copy the resources to the test output directory target/test-classes/
+			 * This can be run with `mvn resources:testResources`
+			 */
 			ConfigStoreOptions fileStore = new ConfigStoreOptions()
 					.setType("file")
 					.setFormat("json")
-					.setConfig(new JsonObject().put("path", "src/test/config/vertx.json"));
-			ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);		
+					.setConfig(new JsonObject().put("path", "target/test-classes/vertx.json"));
+			ConfigRetrieverOptions configRetrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);
 			ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
 			retriever.getConfig(json -> {
 				JsonObject config = json.result();
-				port_ = config.getInteger("port");
 				DeploymentOptions options = new DeploymentOptions().setConfig(config);
 				vertx.deployVerticle(LibraryVerticle.class.getName(), options, context.completing());
-			});			
+			});
 		} catch (Exception e) {
-			System.out.println("Setup exception!" + e.toString());
+			System.out.println("Setup exception! " + e.toString());
 		}
 	}
 	@Test
