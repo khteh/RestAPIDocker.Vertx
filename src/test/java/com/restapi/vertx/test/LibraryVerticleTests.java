@@ -74,8 +74,7 @@ public class LibraryVerticleTests {
 		      assertFalse(response.body().toString().isEmpty());		      
 		      try {
 		    	  JSONArray authors = new JSONArray(response.body().toString());
-		    	  assertFalse(authors.length() == 0);
-		    	  assertTrue(authors.length() == 2);
+		    	  assertEquals(2, authors.length());
 		    	  assertNotNull(authors.get(0));
 		    	  assertNotNull(authors.get(1));
 		    	  context.completeNow();
@@ -103,8 +102,7 @@ public class LibraryVerticleTests {
 		      assertFalse(response.body().toString().isEmpty());		      
 		      try {
 		    	  JSONArray books = new JSONArray(response.body().toString());
-		    	  assertFalse(books.length() == 0);
-		    	  assertTrue(books.length() == 2);
+		    	  assertEquals(2, books.length());
 		    	  assertNotNull(books.get(0));
 		    	  assertNotNull(books.get(1));
 		    	  context.completeNow();

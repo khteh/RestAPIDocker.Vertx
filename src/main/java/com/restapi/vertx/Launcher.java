@@ -27,7 +27,7 @@ public class Launcher extends AbstractVerticle {
 		ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
 		retriever.getConfig(json -> {
 			JsonObject config = json.result();
-			DeploymentOptions options = new DeploymentOptions().setConfig(config);
+			DeploymentOptions options = new DeploymentOptions().setConfig(config).setInstances(4);
 			vertx.deployVerticle(LibraryVerticle.class.getName(), options, result -> {
 				if (result.succeeded())
 					log.info("Successfully launched "+LibraryVerticle.class.getName() + " id: " + result.result());
