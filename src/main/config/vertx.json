@@ -1,4 +1,5 @@
 {
+	"instance_count": 4,
 	"http.port" : 8080,
 	"url": "jdbc:mysql://localhost:3306/library?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC",
 	"user": "guest",

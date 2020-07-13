@@ -27,10 +27,10 @@ public class Launcher extends AbstractVerticle {
 		ConfigRetriever retriever = ConfigRetriever.create(vertx, configRetrieverOptions);
 		retriever.getConfig(json -> {
 			JsonObject config = json.result();
-			DeploymentOptions options = new DeploymentOptions().setConfig(config).setInstances(4);
+			DeploymentOptions options = new DeploymentOptions().setConfig(config).setInstances(config.getInteger("instance_count")); // Use 1 when running in k8s pod.
 			vertx.deployVerticle(LibraryVerticle.class.getName(), options, result -> {
 				if (result.succeeded())
-					log.info("Successfully launched "+LibraryVerticle.class.getName() + " id: " + result.result());
+					log.info("Successfully launched "+config.getInteger("instance_count") + " instances of " + LibraryVerticle.class.getName() + " id: " + result.result());
 				else
 					log.error("Failed to launch "+ LibraryVerticle.class.getName() + " " + result);
 			});			
