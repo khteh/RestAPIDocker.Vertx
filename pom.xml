@@ -9,7 +9,7 @@
 	<description>REST API Docker with Vert.x</description>
 	<properties>
 		<java.version>14</java.version>
-		<vertx.version>3.9.1</vertx.version>
+		<vertx.version>3.9.4</vertx.version>
  		<maven.compiler.source>14</maven.compiler.source>
     	<maven.compiler.target>14</maven.compiler.target>		
 	</properties>
